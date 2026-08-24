@@ -87,7 +87,7 @@ function Detail({ localId }: { localId: string }) {
             <ArrowLeft />
           </Link>
         </Button>
-        <h1 className="text-lg font-bold">{inv?.invoiceId ?? 'Detail Bon'}</h1>
+        <h1 className="text-lg font-bold">{inv?.invoiceId?.toUpperCase() ?? 'Detail Bon'}</h1>
         {inv && isAdmin && (
           <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
@@ -207,7 +207,7 @@ function Detail({ localId }: { localId: string }) {
           <DrawerHeader className="text-left">
             <DrawerTitle>Hapus bon ini?</DrawerTitle>
             <DrawerDescription>
-              {inv?.invoiceId ?? 'Bon'} akan dihapus permanen. Tidak bisa dibatalkan.
+              {inv?.invoiceId?.toUpperCase() ?? 'Bon'} akan dihapus permanen. Tidak bisa dibatalkan.
             </DrawerDescription>
           </DrawerHeader>
           <DrawerFooter>

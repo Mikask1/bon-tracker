@@ -390,7 +390,7 @@ export function InvoiceList() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
-                  {r.invoiceId ?? 'Draf'}
+                  {r.invoiceId?.toUpperCase() ?? 'Draf'}
                 </span>
                 {r.sync === 'pending' && (
                   <Badge variant="secondary" className="text-[0.625rem]">
@@ -580,7 +580,7 @@ export function InvoiceList() {
                 setDup(null);
               }}
             >
-              Lihat {dup?.invoiceId}
+              Lihat {dup?.invoiceId?.toUpperCase()}
             </Button>
             <Button
               variant="outline"
