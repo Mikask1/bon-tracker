@@ -12,7 +12,7 @@ import { serverToRow, pendingToRow, thumbUrl } from '@/hooks/useInvoiceRows';
 import { ImageZoom } from '@/components/ImageZoom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { InvoiceDetailSkeleton } from '@/components/Skeletons';
 import {
   Drawer,
   DrawerContent,
@@ -106,10 +106,7 @@ function Detail({ localId }: { localId: string }) {
       </header>
 
       {isLoading && !inv ? (
-        <div className="flex flex-col gap-3 p-4">
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
+        <InvoiceDetailSkeleton />
       ) : !inv ? (
         <p className="p-8 text-center text-sm text-muted-foreground">
           Bon tidak ditemukan.
@@ -118,9 +115,13 @@ function Detail({ localId }: { localId: string }) {
         <div className="flex flex-col gap-5 p-4">
           <div className="flex items-center gap-2">
             {inv.status === 'LUNAS' ? (
-              <Badge>Lunas</Badge>
+              <Badge className="bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-600">
+                Lunas
+              </Badge>
             ) : (
-              <Badge variant="destructive">Belum Lunas</Badge>
+              <Badge variant="destructive" className="px-3 py-1 text-sm">
+                Belum Lunas
+              </Badge>
             )}
             {inv.sync !== 'synced' && (
               <Badge variant="secondary">
@@ -128,7 +129,7 @@ function Detail({ localId }: { localId: string }) {
               </Badge>
             )}
             <span className="ml-auto text-sm text-muted-foreground">
-              {inv.createdAt.toLocaleDateString('id-ID', {
+              {inv.invoiceCreatedAt.toLocaleDateString('id-ID', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
@@ -191,7 +192,7 @@ function Detail({ localId }: { localId: string }) {
                   <span>Sudah dibayar</span>
                   <span>{formatRupiah(inv.grandTotal - inv.unpaidAmount)}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm font-medium text-destructive">
+                <div className="flex items-center justify-between text-lg font-semibold text-destructive">
                   <span>Belum dibayar</span>
                   <span>{formatRupiah(inv.unpaidAmount)}</span>
                 </div>

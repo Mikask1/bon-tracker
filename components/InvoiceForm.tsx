@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
 import { useScanJobStore } from '@/store/scanJobStore';
-import { thumbUrl, type InvoiceRow } from '@/hooks/useInvoiceRows';
+import { thumbUrl, toYMD, type InvoiceRow } from '@/hooks/useInvoiceRows';
 import { ImageZoom } from '@/components/ImageZoom';
 import {
   Drawer,
@@ -80,6 +80,7 @@ export function InvoiceForm({
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [status, setStatus] = useState<Status>('LUNAS');
   const [unpaid, setUnpaid] = useState('');
+  const [invDate, setInvDate] = useState(''); // yyyy-mm-dd; date printed on the nota
   const [imageUrl, setImageUrl] = useState('');
   const [preview, setPreview] = useState('');
   // Nota total to reconcile summed items against (create only). Seeded from the scan,
@@ -110,6 +111,7 @@ export function InvoiceForm({
     setImageUrl('');
     setPreview('');
     setTotalStr('');
+    setInvDate(toYMD(new Date()));
   }
 
   // Populate once per open: from the invoice (edit), the finished scan (done), or blank.
@@ -141,6 +143,7 @@ export function InvoiceForm({
       setImageUrl(initial.imageUrl);
       setPreview(initial.imageUrl ? thumbUrl(initial.imageUrl, 800) : '');
       setTotalStr(''); // editing a saved invoice: no reconciliation field
+      setInvDate(toYMD(new Date(initial.invoiceCreatedAt)));
       populatedRef.current = true;
       return;
     }
@@ -168,6 +171,11 @@ export function InvoiceForm({
           typeof e.grandTotal === 'number' && e.grandTotal > 0
             ? String(Math.round(e.grandTotal))
             : ''
+        );
+        setInvDate(
+          e.invoiceDate && /^\d{4}-\d{2}-\d{2}$/.test(e.invoiceDate)
+            ? e.invoiceDate
+            : toYMD(new Date())
         );
         populatedRef.current = true;
       } else if (job.status === 'error') {
@@ -213,6 +221,7 @@ export function InvoiceForm({
         : job
           ? new Date(job.createdAt)
           : new Date(),
+      invoiceCreatedAt: invDate ? new Date(invDate) : new Date(),
       buyer: { name: name.trim(), address: address.trim(), phoneNumber: phone.trim() },
       items,
       status,
@@ -299,6 +308,15 @@ export function InvoiceForm({
                   Gagal memindai foto — isi manual.
                 </p>
               )}
+
+              <div className="flex flex-col gap-2">
+                <Label>Tanggal bon</Label>
+                <Input
+                  type="date"
+                  value={invDate}
+                  onChange={(e) => setInvDate(e.target.value)}
+                />
+              </div>
 
               <div className="flex flex-col gap-2">
                 <Label>Nama pembeli</Label>

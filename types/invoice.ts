@@ -30,6 +30,7 @@ export const invoiceInputSchema = z
   .object({
     localId: z.string().min(1),
     createdAt: z.coerce.date(),
+    invoiceCreatedAt: z.coerce.date(), // date printed on the nota (editable; defaults to today)
     buyer: buyerSchema,
     items: z.array(itemSchema).min(1, 'Minimal 1 barang'),
     status: z.enum(STATUS),
@@ -59,6 +60,7 @@ export interface Invoice {
   unpaidAmount: number;
   imageUrl: string;
   imageHash?: string;
+  invoiceCreatedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,4 +72,5 @@ export interface ExtractedInvoice {
   buyer: Buyer;
   items: Item[];
   grandTotal: number;
+  invoiceDate?: string; // date printed on the nota, yyyy-mm-dd; empty if unreadable
 }

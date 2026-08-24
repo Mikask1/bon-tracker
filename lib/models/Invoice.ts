@@ -33,6 +33,8 @@ const invoiceSchema = new Schema(
     // SHA-256 of the uploaded photo bytes — dedupes re-uploads of the same invoice.
     // sparse: manual/legacy invoices have no hash and must not collide on null.
     imageHash: { type: String, index: true, sparse: true },
+    // date printed on the nota (editable by the user; defaults to today)
+    invoiceCreatedAt: { type: Date, required: true },
     // creation date comes from the client (may predate sync); YYMMDD of the id derives from it
     createdAt: { type: Date, required: true, index: true }, // sort + pagination
   },

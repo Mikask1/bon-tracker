@@ -44,8 +44,10 @@ const responseSchema = {
     },
     // Printed grand total on the nota — reconciliation only, never persisted.
     grandTotal: { type: Type.NUMBER },
+    // Date printed on the nota, yyyy-mm-dd. Empty string if not present/unreadable.
+    invoiceDate: { type: Type.STRING },
   },
-  required: ['buyer', 'items', 'grandTotal'],
+  required: ['buyer', 'items', 'grandTotal', 'invoiceDate'],
 };
 
 const PROMPT =
@@ -58,9 +60,12 @@ const PROMPT =
   'Also extract grandTotal: the overall total PRINTED on the receipt as a whole ' +
   'rupiah number (read the printed figure, do not compute it yourself). ' +
   'Make sure the sum of all line items equals the printed grandTotal. ' +
+  'Also extract invoiceDate: the date printed on the receipt in yyyy-mm-dd format ' +
+  '(empty string if there is none). ' +
   'If a field is unreadable, return an empty string or 0. ' +
   'Return ONLY JSON of the shape {"buyer":{"name","address","phoneNumber"},' +
-  '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0}, with no explanation.';
+  '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0,"invoiceDate":""}, ' +
+  'with no explanation.';
 
 // Per-model config: Gemma has no structured output; Gemini 3.x uses thinkingLevel
 // (minimal), Gemini 2.5 uses thinkingBudget (0). Sending both to a 3.x model errors.

@@ -30,6 +30,7 @@ function serialize(doc: any): InvoiceType {
     unpaidAmount: doc.unpaidAmount ?? 0,
     imageUrl: doc.imageUrl ?? '',
     imageHash: doc.imageHash ?? undefined,
+    invoiceCreatedAt: doc.invoiceCreatedAt ?? doc.createdAt,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -130,6 +131,7 @@ export const invoicesRouter = router({
           status: input.status,
           unpaidAmount: input.unpaidAmount,
           imageUrl: input.imageUrl,
+          invoiceCreatedAt: input.invoiceCreatedAt,
           grandTotal,
         },
         { new: true }

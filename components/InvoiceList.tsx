@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { InvoiceListSkeleton } from '@/components/Skeletons';
 import {
   Select,
   SelectContent,
@@ -295,12 +295,7 @@ export function InvoiceList() {
       </header>
 
       <div className="flex flex-col divide-y pb-28">
-        {list.isLoading && (
-          <div className="flex flex-col gap-3 p-4">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        )}
+        {list.isLoading && <InvoiceListSkeleton />}
 
         {/* active scan jobs */}
         {jobRows.map((j) => (
@@ -419,17 +414,23 @@ export function InvoiceList() {
             </div>
 
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <span className="font-semibold">{formatRupiah(r.grandTotal)}</span>
               {r.status === 'LUNAS' ? (
-                <Badge>Lunas</Badge>
+                <Badge className="bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-600">
+                  Lunas
+                </Badge>
               ) : (
-                <div className="flex flex-col items-end">
-                  <Badge variant="destructive">Belum Lunas</Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Sisa {formatRupiah(r.unpaidAmount)}
-                  </span>
-                </div>
+                <Badge variant="destructive" className="px-3 py-1 text-sm">
+                  Belum Lunas
+                </Badge>
               )}
+              {r.status === 'BELUM_LUNAS' && (
+                <span className="text-sm font-semibold text-destructive">
+                  Sisa {formatRupiah(r.unpaidAmount)}
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {formatRupiah(r.grandTotal)}
+              </span>
             </div>
           </Link>
         ))}

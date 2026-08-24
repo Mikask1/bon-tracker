@@ -18,6 +18,7 @@ export interface InvoiceRow {
   status: Status;
   unpaidAmount: number;
   imageUrl: string;
+  invoiceCreatedAt: Date;
   createdAt: Date;
   sync: 'synced' | 'pending' | 'error';
 }
@@ -32,6 +33,7 @@ export function serverToRow(i: Invoice): InvoiceRow {
     status: i.status,
     unpaidAmount: i.unpaidAmount,
     imageUrl: i.imageUrl,
+    invoiceCreatedAt: new Date(i.invoiceCreatedAt),
     createdAt: new Date(i.createdAt),
     sync: 'synced',
   };
@@ -47,6 +49,7 @@ export function pendingToRow(p: PendingInvoice): InvoiceRow {
     status: p.input.status,
     unpaidAmount: p.input.unpaidAmount,
     imageUrl: p.input.imageUrl,
+    invoiceCreatedAt: new Date(p.input.invoiceCreatedAt),
     createdAt: new Date(p.input.createdAt),
     sync: p.syncStatus,
   };
