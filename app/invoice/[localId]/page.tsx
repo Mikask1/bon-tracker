@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import { LoginGate } from '@/components/LoginGate';
 import { InvoiceForm } from '@/components/InvoiceForm';
 import { trpc } from '@/lib/trpc/client';
+import { useAuthStore } from '@/store/authStore';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
 import { serverToRow, pendingToRow, thumbUrl } from '@/hooks/useInvoiceRows';
+import { ImageZoom } from '@/components/ImageZoom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,6 +40,7 @@ export default function InvoiceDetailPage({
 
 function Detail({ localId }: { localId: string }) {
   const router = useRouter();
+  const isAdmin = useAuthStore((s) => s.role === 'admin');
   const pending = usePendingStore((s) => s.items[localId]);
   const removePending = usePendingStore((s) => s.remove);
   const utils = trpc.useUtils();
@@ -84,8 +87,8 @@ function Detail({ localId }: { localId: string }) {
             <ArrowLeft />
           </Link>
         </Button>
-        <h1 className="text-lg font-bold">{inv?.invoiceId ?? 'Detail Invoice'}</h1>
-        {inv && (
+        <h1 className="text-lg font-bold">{inv?.invoiceId ?? 'Detail Bon'}</h1>
+        {inv && isAdmin && (
           <div className="ml-auto flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil /> Edit
@@ -109,7 +112,7 @@ function Detail({ localId }: { localId: string }) {
         </div>
       ) : !inv ? (
         <p className="p-8 text-center text-sm text-muted-foreground">
-          Invoice tidak ditemukan.
+          Bon tidak ditemukan.
         </p>
       ) : (
         <div className="flex flex-col gap-5 p-4">
@@ -134,10 +137,10 @@ function Detail({ localId }: { localId: string }) {
           </div>
 
           {inv.imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={thumbUrl(inv.imageUrl, 800)}
-              alt="Foto invoice"
+            <ImageZoom
+              src={inv.imageUrl}
+              thumb={thumbUrl(inv.imageUrl, 800)}
+              alt="Foto bon"
               className="w-full rounded-lg border object-contain"
             />
           )}
@@ -179,7 +182,7 @@ function Detail({ localId }: { localId: string }) {
           {/* Totals */}
           <section className="flex flex-col gap-1 border-t pt-3">
             <div className="flex items-center justify-between text-base font-semibold">
-              <span>Grand Total</span>
+              <span>Total</span>
               <span>{formatRupiah(inv.grandTotal)}</span>
             </div>
             {inv.status === 'BELUM_LUNAS' && (

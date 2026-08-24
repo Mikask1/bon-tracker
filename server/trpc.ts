@@ -10,10 +10,20 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 const isAuthed = t.middleware(({ ctx, next }) => {
-  if (!ctx.authed) {
+  if (!ctx.role) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
-  return next({ ctx });
+  return next({ ctx: { ...ctx, role: ctx.role } });
 });
 
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+// admin-only: editing or deleting saved invoices. Processors can only create.
+const isAdmin = t.middleware(({ ctx, next }) => {
+  if (ctx.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Hanya admin' });
+  }
+  return next({ ctx: { ...ctx, role: ctx.role } });
+});
+
+export const adminProcedure = t.procedure.use(isAuthed).use(isAdmin);

@@ -10,11 +10,11 @@ import { toast } from 'sonner';
 export function LoginGate({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const authed = useAuthStore((s) => s.authed);
-  const setAuthed = useAuthStore((s) => s.setAuthed);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [pw, setPw] = useState('');
 
   const login = trpc.auth.login.useMutation({
-    onSuccess: () => setAuthed(true),
+    onSuccess: (data) => setAuth(data.role),
     onError: (e) => toast.error(e.message || 'Gagal masuk'),
   });
 
@@ -35,7 +35,7 @@ export function LoginGate({ children }: { children: React.ReactNode }) {
       >
         <Input
           type="password"
-          placeholder="Password"
+          placeholder="Kata sandi"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           autoFocus

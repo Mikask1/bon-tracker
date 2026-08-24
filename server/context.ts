@@ -5,14 +5,14 @@ import { verifyToken, COOKIE_NAME } from '@/lib/utils/jwt';
 export async function createContext(opts: FetchCreateContextFnOptions) {
   await connectDB();
 
-  let authed = false;
+  let role: import('@/lib/utils/jwt').Role | null = null;
   const cookieHeader = opts.req.headers.get('cookie');
   if (cookieHeader) {
     const token = parseCookies(cookieHeader)[COOKIE_NAME];
-    if (token && verifyToken(token)) authed = true;
+    if (token) role = verifyToken(token);
   }
 
-  return { authed, req: opts.req, resHeaders: opts.resHeaders };
+  return { authed: !!role, role, req: opts.req, resHeaders: opts.resHeaders };
 }
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

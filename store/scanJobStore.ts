@@ -10,6 +10,7 @@ export interface ScanJob {
   localId: string;
   status: 'scanning' | 'done' | 'error';
   imageUrl: string; // uploaded ImageKit URL — all a job needs
+  imageHash?: string; // SHA-256 of photo bytes — saved onto the invoice for dedupe
   extracted?: ExtractedInvoice;
   error?: string;
   createdAt: string; // ISO

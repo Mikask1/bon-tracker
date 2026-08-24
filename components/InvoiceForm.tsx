@@ -5,6 +5,7 @@ import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { thumbUrl, type InvoiceRow } from '@/hooks/useInvoiceRows';
+import { ImageZoom } from '@/components/ImageZoom';
 import {
   Drawer,
   DrawerContent,
@@ -217,6 +218,7 @@ export function InvoiceForm({
       status,
       unpaidAmount,
       imageUrl: imageUrl || job?.imageUrl || '',
+      imageHash: job?.imageHash,
     };
     const parsed = invoiceInputSchema.safeParse(payload);
     if (!parsed.success) {
@@ -249,7 +251,7 @@ export function InvoiceForm({
     if (job) removeJob(job.localId);
     toast.success(
       isEdit
-        ? 'Draft diperbarui'
+        ? 'Draf diperbarui'
         : online
           ? 'Bon disimpan'
           : 'Tersimpan — akan sinkron saat online'
@@ -271,7 +273,7 @@ export function InvoiceForm({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={thumbUrl(job.imageUrl, 600)}
-                alt="Foto invoice"
+                alt="Foto bon"
                 className="max-h-48 w-full rounded-md object-contain"
               />
             )}
@@ -279,21 +281,15 @@ export function InvoiceForm({
               <Loader2 className="animate-spin" />
               {uploading ? 'Mengunggah…' : 'Memindai…'}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Bisa ditutup — proses lanjut di belakang layar dan muncul di daftar.
-            </p>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Tutup
-            </Button>
           </div>
         ) : (
           <>
             <div className="flex flex-col gap-4 overflow-y-auto px-4 pb-2">
               {preview && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={preview}
-                  alt="Foto invoice"
+                <ImageZoom
+                  src={imageUrl || job?.imageUrl || preview}
+                  thumb={preview}
+                  alt="Foto bon"
                   className="max-h-40 w-full rounded-md object-contain"
                 />
               )}
@@ -379,7 +375,7 @@ export function InvoiceForm({
 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-base font-semibold">
-                  <span>Grand Total</span>
+                  <span>Total</span>
                   <span>{formatRupiah(grandTotal)}</span>
                 </div>
                 {!isEdit && (

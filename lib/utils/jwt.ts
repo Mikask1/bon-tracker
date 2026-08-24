@@ -10,16 +10,19 @@ export const COOKIE_NAME = 'tsh-token';
 const EXPIRES_IN = '30d';
 export const TOKEN_MAX_AGE = 30 * 24 * 60 * 60; // seconds
 
-// Single shared account — the token is just a signed "logged in" marker.
-export function generateToken(): string {
-  return jwt.sign({ app: 'tsh' }, JWT_SECRET as string, { expiresIn: EXPIRES_IN });
+export type Role = 'admin' | 'processor';
+
+// Token carries the role. admin = full access, processor = create only.
+export function generateToken(role: Role): string {
+  return jwt.sign({ app: 'tsh', role }, JWT_SECRET as string, { expiresIn: EXPIRES_IN });
 }
 
-export function verifyToken(token: string): boolean {
+// Returns the role for a valid token, else null. Old tokens (no role) → admin.
+export function verifyToken(token: string): Role | null {
   try {
-    jwt.verify(token, JWT_SECRET as string);
-    return true;
+    const p = jwt.verify(token, JWT_SECRET as string) as { role?: Role };
+    return p.role === 'processor' ? 'processor' : 'admin';
   } catch {
-    return false;
+    return null;
   }
 }

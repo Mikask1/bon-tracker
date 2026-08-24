@@ -52,10 +52,15 @@ const PROMPT =
   'Ini foto sebuah nota/invoice penjualan toko. Ekstrak data pembeli ' +
   '(nama, alamat, nomor telepon) dan daftar barang (nama barang, jumlah/qty, ' +
   'harga satuan dalam rupiah sebagai bilangan bulat tanpa titik). ' +
+  'Diskon/potongan harga dimasukkan sebagai baris barang tersendiri dengan ' +
+  'harga satuan NEGATIF (mis. potongan Rp5.000 → unitPrice -5000). ' +
+  'Pajak (PPN) dan biaya tambahan/surcharge lain juga dimasukkan sebagai baris ' +
+  'barang tersendiri dengan harga positif. ' +
   'Ekstrak juga grandTotal: total keseluruhan yang TERTERA di nota sebagai ' +
   'bilangan bulat rupiah (bukan hasil hitunganmu — baca angka totalnya). ' +
   'Jika suatu field tidak terbaca, kembalikan string kosong atau 0. ' +
   'Kembalikan HANYA JSON dengan bentuk {"buyer":{"name","address","phoneNumber"},' +
+  'PASTIKAN JUMLAH SEMUA ITEM SESUAI DENGAN GRANDTOTAL YANG TERTERA' +
   '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0}, tanpa penjelasan.';
 
 // Per-model config: Gemma has no structured output; Gemini 3.x uses thinkingLevel

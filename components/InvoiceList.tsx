@@ -12,9 +12,11 @@ import {
   thumbUrl,
 } from '@/hooks/useInvoiceRows';
 import { InvoiceForm } from './InvoiceForm';
-import { FontScaleButton } from './FontScale';
+import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { uploadImage } from '@/lib/upload';
+import { sha256 } from '@/lib/hash';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +45,8 @@ import {
   PencilLine,
   Loader2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatRupiah } from '@/lib/format';
 import type { Status } from '@/types/invoice';
@@ -64,12 +68,17 @@ export function InvoiceList() {
   const [uploading, setUploading] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
   const [cancelJobId, setCancelJobId] = useState<string | undefined>(undefined);
+  const [dup, setDup] = useState<
+    { file: File; hash: string; localId: string; invoiceId: string } | null
+  >(null);
 
   const addJob = useScanJobStore((s) => s.add);
   const updateJob = useScanJobStore((s) => s.update);
   const removeJob = useScanJobStore((s) => s.remove);
   const jobsMap = useScanJobStore((s) => s.jobs);
   const scan = trpc.invoices.scan.useMutation();
+  const utils = trpc.useUtils();
+  const router = useRouter();
   const runningRef = useRef<Set<string>>(new Set());
 
   // Scan runs detached from the drawer (InvoiceList stays mounted). Server fetches
@@ -91,9 +100,25 @@ export function InvoiceList() {
     }
   }
 
-  // Upload FIRST, then create the (tiny, URL-only) job and scan it.
+  // Hash the bytes first: if this exact photo is already a saved invoice, ask before
+  // uploading — the user can view the existing bon or create a new one anyway.
   async function startFoto(file: File) {
     setChooser(false);
+    const hash = await sha256(file);
+    try {
+      const found = await utils.invoices.findByImageHash.fetch({ hash });
+      if (found) {
+        setDup({ file, hash, ...found });
+        return;
+      }
+    } catch {
+      // offline / lookup failed — fall through and upload as normal
+    }
+    doUpload(file, hash);
+  }
+
+  // Upload the photo, then create the (tiny, URL-only) job and scan it.
+  async function doUpload(file: File, hash: string) {
     setActiveJobId(undefined);
     setUploading(true);
     setOpen(true);
@@ -104,6 +129,7 @@ export function InvoiceList() {
         localId,
         status: 'scanning',
         imageUrl: url,
+        imageHash: hash,
         createdAt: new Date().toISOString(),
       });
       setActiveJobId(localId);
@@ -338,8 +364,8 @@ export function InvoiceList() {
         {!list.isLoading && rows.length === 0 && jobRows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {total === 0 && !dq && status === 'ALL' && !from && !to
-              ? 'Belum ada invoice. Tekan tombol + untuk menambah.'
-              : 'Tidak ada invoice yang cocok dengan filter.'}
+              ? 'Belum ada bon. Tekan tombol + untuk menambah.'
+              : 'Tidak ada bon yang cocok dengan filter.'}
           </p>
         )}
 
@@ -368,7 +394,7 @@ export function InvoiceList() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
-                  {r.invoiceId ?? 'Draft'}
+                  {r.invoiceId ?? 'Draf'}
                 </span>
                 {r.sync === 'pending' && (
                   <Badge variant="secondary" className="text-[0.625rem]">
@@ -416,19 +442,21 @@ export function InvoiceList() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
+                aria-label="Sebelumnya"
                 disabled={page <= 1 || list.isFetching}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Sebelumnya
+                <ChevronLeft />
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
+                aria-label="Berikutnya"
                 disabled={page >= totalPages || list.isFetching}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Berikutnya
+                <ChevronRight />
               </Button>
             </div>
           </div>
@@ -439,7 +467,7 @@ export function InvoiceList() {
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
         <div className="relative mx-auto h-16 max-w-2xl">
           <div className="absolute left-2 top-1/2 -translate-y-1/2">
-            <FontScaleButton />
+            <SettingsButton />
           </div>
           <Button
             size="icon"
@@ -509,6 +537,38 @@ export function InvoiceList() {
         jobId={activeJobId}
         uploading={uploading}
       />
+
+      {/* duplicate photo — already saved as an invoice */}
+      <Drawer open={!!dup} onOpenChange={(v) => !v && setDup(null)}>
+        <DrawerContent>
+          <DrawerHeader className="text-center">
+            <DrawerTitle>Foto ini sudah ada</DrawerTitle>
+          </DrawerHeader>
+          <div className="flex flex-col gap-3 px-4 pb-8">
+            <Button
+              size="lg"
+              className="h-14 w-full text-base"
+              onClick={() => {
+                if (dup) router.push(`/invoice/${dup.localId}`);
+                setDup(null);
+              }}
+            >
+              Lihat {dup?.invoiceId}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-14 w-full text-base"
+              onClick={() => {
+                if (dup) doUpload(dup.file, dup.hash);
+                setDup(null);
+              }}
+            >
+              Buat baru
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* cancel-job confirmation */}
       <Drawer

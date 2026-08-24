@@ -12,7 +12,9 @@ export function computeGrandTotal(
 export const itemSchema = z.object({
   itemName: z.string().min(1, 'Nama barang wajib diisi'),
   itemQty: z.number().positive('Qty harus lebih dari 0'), // decimals allowed (e.g. 1.5 kg)
-  unitPrice: z.number().int('Harga harus bilangan bulat (Rp)').min(0),
+  // Negative allowed: discounts are a line item with a negative price; taxes and
+  // surcharges are positive line items.
+  unitPrice: z.number().int('Harga harus bilangan bulat (Rp)'),
 });
 export type Item = z.infer<typeof itemSchema>;
 
@@ -33,6 +35,7 @@ export const invoiceInputSchema = z
     status: z.enum(STATUS),
     unpaidAmount: z.number().int().min(0),
     imageUrl: z.string().default(''),
+    imageHash: z.string().optional(), // SHA-256 of photo bytes; absent for manual entry
   })
   .refine(
     (v) => {
@@ -55,6 +58,7 @@ export interface Invoice {
   status: Status;
   unpaidAmount: number;
   imageUrl: string;
+  imageHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }

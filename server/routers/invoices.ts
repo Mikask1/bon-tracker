@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure, adminProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import Invoice from '@/lib/models/Invoice';
 import {
@@ -29,6 +29,7 @@ function serialize(doc: any): InvoiceType {
     status: doc.status,
     unpaidAmount: doc.unpaidAmount ?? 0,
     imageUrl: doc.imageUrl ?? '',
+    imageHash: doc.imageHash ?? undefined,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -93,6 +94,14 @@ export const invoicesRouter = router({
       return doc ? serialize(doc) : null;
     }),
 
+  // Byte-level dedupe: has this exact photo already been saved as an invoice?
+  findByImageHash: protectedProcedure
+    .input(z.object({ hash: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const doc = await Invoice.findOne({ imageHash: input.hash }).lean();
+      return doc ? { localId: doc.localId, invoiceId: doc.invoiceId } : null;
+    }),
+
   // Idempotent create: dedupe by localId so a double-flushed offline queue can't
   // produce two invoices. Server owns grandTotal + invoiceId.
   create: protectedProcedure
@@ -101,13 +110,15 @@ export const invoicesRouter = router({
       const existing = await Invoice.findOne({ localId: input.localId }).lean();
       if (existing) return serialize(existing);
 
+      // Note: no byte-hash dedupe here — the client warns before upload but lets the
+      // user create anyway, so a duplicate hash is an allowed choice, not a conflict.
       const grandTotal = computeGrandTotal(input.items);
       const invoiceId = await generateInvoiceId(input.createdAt);
       const doc = await Invoice.create({ ...input, grandTotal, invoiceId });
       return serialize(doc.toObject());
     }),
 
-  update: protectedProcedure
+  update: adminProcedure
     .input(invoiceInputSchema)
     .mutation(async ({ input }) => {
       const grandTotal = computeGrandTotal(input.items);
@@ -127,7 +138,7 @@ export const invoicesRouter = router({
       return serialize(doc);
     }),
 
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ localId: z.string() }))
     .mutation(async ({ input }) => {
       await Invoice.deleteOne({ localId: input.localId });

@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Toko Sinar Harapan — Invoice',
-  description: 'Pencatatan invoice Toko Sinar Harapan',
+  title: 'Toko Sinar Harapan',
+  description: 'Pencatatan bon Toko Sinar Harapan',
   manifest: '/manifest.json',
   icons: { icon: '/icon.svg', apple: '/icon.svg' },
 };

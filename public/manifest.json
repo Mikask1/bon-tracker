@@ -1,7 +1,7 @@
 {
-  "name": "Toko Sinar Harapan — Invoice",
-  "short_name": "TSH Invoice",
-  "description": "Pencatatan invoice Toko Sinar Harapan",
+  "name": "Toko Sinar Harapan — Bon",
+  "short_name": "TSH Bon",
+  "description": "Pencatatan bon Toko Sinar Harapan",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

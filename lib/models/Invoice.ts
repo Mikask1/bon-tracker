@@ -30,6 +30,9 @@ const invoiceSchema = new Schema(
     status: { type: String, enum: STATUS, required: true },
     unpaidAmount: { type: Number, default: 0 },
     imageUrl: { type: String, default: '' },
+    // SHA-256 of the uploaded photo bytes — dedupes re-uploads of the same invoice.
+    // sparse: manual/legacy invoices have no hash and must not collide on null.
+    imageHash: { type: String, index: true, sparse: true },
     // creation date comes from the client (may predate sync); YYMMDD of the id derives from it
     createdAt: { type: Date, required: true, index: true }, // sort + pagination
   },
