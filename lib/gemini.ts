@@ -49,19 +49,18 @@ const responseSchema = {
 };
 
 const PROMPT =
-  'Ini foto sebuah nota/invoice penjualan toko. Ekstrak data pembeli ' +
-  '(nama, alamat, nomor telepon) dan daftar barang (nama barang, jumlah/qty, ' +
-  'harga satuan dalam rupiah sebagai bilangan bulat tanpa titik). ' +
-  'Diskon/potongan harga dimasukkan sebagai baris barang tersendiri dengan ' +
-  'harga satuan NEGATIF (mis. potongan Rp5.000 → unitPrice -5000). ' +
-  'Pajak (PPN) dan biaya tambahan/surcharge lain juga dimasukkan sebagai baris ' +
-  'barang tersendiri dengan harga positif. ' +
-  'Ekstrak juga grandTotal: total keseluruhan yang TERTERA di nota sebagai ' +
-  'bilangan bulat rupiah (bukan hasil hitunganmu — baca angka totalnya). ' +
-  'Jika suatu field tidak terbaca, kembalikan string kosong atau 0. ' +
-  'Kembalikan HANYA JSON dengan bentuk {"buyer":{"name","address","phoneNumber"},' +
-  'PASTIKAN JUMLAH SEMUA ITEM SESUAI DENGAN GRANDTOTAL YANG TERTERA' +
-  '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0}, tanpa penjelasan.';
+  'This is a photo of a store sales receipt/invoice. Extract the buyer details ' +
+  '(name, address, phone number) and the list of items (item name, quantity, ' +
+  'unit price in rupiah as a whole number with no separators). ' +
+  'Put any discount as its own line item with a NEGATIVE unit price ' +
+  '(e.g. a Rp5,000 discount -> unitPrice -5000). ' +
+  'Put taxes (PPN) and any other surcharges as their own line items with a positive price. ' +
+  'Also extract grandTotal: the overall total PRINTED on the receipt as a whole ' +
+  'rupiah number (read the printed figure, do not compute it yourself). ' +
+  'Make sure the sum of all line items equals the printed grandTotal. ' +
+  'If a field is unreadable, return an empty string or 0. ' +
+  'Return ONLY JSON of the shape {"buyer":{"name","address","phoneNumber"},' +
+  '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0}, with no explanation.';
 
 // Per-model config: Gemma has no structured output; Gemini 3.x uses thinkingLevel
 // (minimal), Gemini 2.5 uses thinkingBudget (0). Sending both to a 3.x model errors.
