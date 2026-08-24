@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Toko Sinar Harapan">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb703"/>
+      <stop offset="1" stop-color="#fb8500"/>
+    </linearGradient>
+  </defs>
+
+  <!-- full-bleed background (maskable-safe: key art kept within center) -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- sun: rays + core behind the receipt -->
+  <g stroke="#fff" stroke-width="14" stroke-linecap="round" opacity="0.9">
+    <line x1="256" y1="70" x2="256" y2="112"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(45 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(90 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(135 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(-45 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(-90 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(-135 256 168)"/>
+    <line x1="256" y1="70" x2="256" y2="112" transform="rotate(180 256 168)"/>
+  </g>
+  <circle cx="256" cy="168" r="40" fill="#fff"/>
+
+  <!-- receipt / invoice -->
+  <path d="M156 210
+           h200
+           a16 16 0 0 1 16 16
+           v190
+           l-27 -18 -27 18 -27 -18 -27 18 -27 -18 -27 18 -27 -18 -27 18
+           v-190
+           a16 16 0 0 1 16 -16 z"
+        fill="#fff"/>
+  <g fill="#fb8500">
+    <rect x="184" y="252" width="144" height="16" rx="8"/>
+    <rect x="184" y="292" width="144" height="12" rx="6" opacity="0.55"/>
+    <rect x="184" y="320" width="96" height="12" rx="6" opacity="0.55"/>
+    <rect x="184" y="360" width="60" height="16" rx="8"/>
+    <rect x="268" y="360" width="60" height="16" rx="8"/>
+  </g>
+</svg>
