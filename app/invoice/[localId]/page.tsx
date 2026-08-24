@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { LoginGate } from '@/components/LoginGate';
 import { InvoiceForm } from '@/components/InvoiceForm';
 import { trpc } from '@/lib/trpc/client';
@@ -10,7 +11,16 @@ import { serverToRow, pendingToRow, thumbUrl } from '@/hooks/useInvoiceRows';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from '@/components/ui/drawer';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { formatRupiah } from '@/lib/format';
 
 export default function InvoiceDetailPage({
@@ -27,7 +37,11 @@ export default function InvoiceDetailPage({
 }
 
 function Detail({ localId }: { localId: string }) {
+  const router = useRouter();
   const pending = usePendingStore((s) => s.items[localId]);
+  const removePending = usePendingStore((s) => s.remove);
+  const utils = trpc.useUtils();
+  const del = trpc.invoices.delete.useMutation();
   // Only hit the server when it isn't a local draft.
   const query = trpc.invoices.getByLocalId.useQuery(
     { localId },
@@ -35,6 +49,25 @@ function Detail({ localId }: { localId: string }) {
   );
 
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function doDelete() {
+    setDeleting(true);
+    try {
+      if (pending) {
+        removePending(localId); // unsynced draft: just drop from the queue
+      } else {
+        await del.mutateAsync({ localId });
+        await utils.invoices.list.invalidate();
+      }
+      toast.success('Bon dihapus');
+      router.push('/');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menghapus');
+      setDeleting(false);
+    }
+  }
 
   const inv = pending
     ? pendingToRow(pending)
@@ -53,14 +86,19 @@ function Detail({ localId }: { localId: string }) {
         </Button>
         <h1 className="text-lg font-bold">{inv?.invoiceId ?? 'Detail Invoice'}</h1>
         {inv && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setEditOpen(true)}
-          >
-            <Pencil /> Edit
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil /> Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Hapus"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="text-destructive" />
+            </Button>
+          </div>
         )}
       </header>
 
@@ -163,6 +201,25 @@ function Detail({ localId }: { localId: string }) {
       {inv && (
         <InvoiceForm open={editOpen} onOpenChange={setEditOpen} initial={inv} />
       )}
+
+      <Drawer open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Hapus bon ini?</DrawerTitle>
+            <DrawerDescription>
+              {inv?.invoiceId ?? 'Bon'} akan dihapus permanen. Tidak bisa dibatalkan.
+            </DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter>
+            <Button variant="destructive" onClick={doDelete} disabled={deleting}>
+              {deleting ? 'Menghapus…' : 'Hapus'}
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Batal
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

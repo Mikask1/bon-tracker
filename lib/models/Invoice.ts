@@ -13,7 +13,7 @@ const itemSchema = new Schema(
 const buyerSchema = new Schema(
   {
     name: { type: String, default: '' },
-    address: { type: String, required: true },
+    address: { type: String, default: '' },
     phoneNumber: { type: String, default: '' },
   },
   { _id: false }

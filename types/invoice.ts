@@ -18,7 +18,7 @@ export type Item = z.infer<typeof itemSchema>;
 
 export const buyerSchema = z.object({
   name: z.string().default(''),
-  address: z.string().min(1, 'Alamat wajib diisi'), // the one required buyer field
+  address: z.string().default(''),
   phoneNumber: z.string().default(''),
 });
 export type Buyer = z.infer<typeof buyerSchema>;
@@ -59,8 +59,11 @@ export interface Invoice {
   updatedAt: Date;
 }
 
-// Extracted shape from the vision model (buyer + items, no totals/status).
+// Extracted shape from the vision model. `grandTotal` is the printed total read off
+// the nota — used ONLY to reconcile against the summed line items at entry time.
+// It is transient (never persisted; not part of invoiceInputSchema / the DB model).
 export interface ExtractedInvoice {
   buyer: Buyer;
   items: Item[];
+  grandTotal: number;
 }

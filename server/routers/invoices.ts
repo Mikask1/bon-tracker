@@ -127,10 +127,25 @@ export const invoicesRouter = router({
       return serialize(doc);
     }),
 
-  // Online-only vision extraction from a base64 photo.
-  scan: protectedProcedure
-    .input(z.object({ base64: z.string(), mimeType: z.string() }))
+  delete: protectedProcedure
+    .input(z.object({ localId: z.string() }))
     .mutation(async ({ input }) => {
-      return extractInvoice(input.base64, input.mimeType);
+      await Invoice.deleteOne({ localId: input.localId });
+      return { localId: input.localId };
+    }),
+
+  // Online-only vision extraction. Takes the already-uploaded ImageKit URL and
+  // fetches the bytes server-side — the client never holds base64, so a scan job
+  // only needs to persist the URL (tiny) and can resume after a reload.
+  scan: protectedProcedure
+    .input(z.object({ imageUrl: z.string().url() }))
+    .mutation(async ({ input }) => {
+      const r = await fetch(input.imageUrl);
+      if (!r.ok) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Gagal mengambil gambar' });
+      }
+      const base64 = Buffer.from(await r.arrayBuffer()).toString('base64');
+      const mimeType = r.headers.get('content-type') || 'image/jpeg';
+      return extractInvoice(base64, mimeType);
     }),
 });
