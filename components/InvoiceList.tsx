@@ -466,8 +466,8 @@ export function InvoiceList() {
 
       {/* bottom app bar with a seated + action */}
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-        <div className="relative mx-auto h-16 max-w-2xl">
-          <div className="absolute left-2 top-1/2 -translate-y-1/2">
+        <div className="relative mx-auto h-20 max-w-2xl">
+          <div className="absolute left-[max(1rem,env(safe-area-inset-left))] top-3">
             <SettingsButton />
           </div>
           <Button
