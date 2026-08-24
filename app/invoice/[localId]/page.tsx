@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/drawer';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatRupiah } from '@/lib/format';
+import { formatRupiah, formatDate } from '@/lib/format';
 
 export default function InvoiceDetailPage({
   params,
@@ -129,11 +129,7 @@ function Detail({ localId }: { localId: string }) {
               </Badge>
             )}
             <span className="ml-auto text-sm text-muted-foreground">
-              {inv.invoiceCreatedAt.toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
+              {formatDate(inv.invoiceCreatedAt)}
             </span>
           </div>
 

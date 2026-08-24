@@ -73,4 +73,5 @@ export interface ExtractedInvoice {
   items: Item[];
   grandTotal: number;
   invoiceDate?: string; // date printed on the nota, yyyy-mm-dd; empty if unreadable
+  fullyPaid?: boolean; // LUNAS stamp detected → prefill status LUNAS
 }

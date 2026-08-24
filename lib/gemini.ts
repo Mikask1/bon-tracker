@@ -46,8 +46,10 @@ const responseSchema = {
     grandTotal: { type: Type.NUMBER },
     // Date printed on the nota, yyyy-mm-dd. Empty string if not present/unreadable.
     invoiceDate: { type: Type.STRING },
+    // true if the nota shows a LUNAS/PAID stamp or marking; false otherwise.
+    fullyPaid: { type: Type.BOOLEAN },
   },
-  required: ['buyer', 'items', 'grandTotal', 'invoiceDate'],
+  required: ['buyer', 'items', 'grandTotal', 'invoiceDate', 'fullyPaid'],
 };
 
 const PROMPT =
@@ -61,10 +63,13 @@ const PROMPT =
   'rupiah number (read the printed figure, do not compute it yourself). ' +
   'Make sure the sum of all line items equals the printed grandTotal. ' +
   'Also extract invoiceDate: the date printed on the receipt in yyyy-mm-dd format ' +
-  '(empty string if there is none). ' +
+  '(empty string if there is none). Indonesian receipts usually print the date as ' +
+  'DD-MM-YYYY or DD/MM/YYYY — convert it to yyyy-mm-dd. ' +
+  'Also detect fullyPaid: true if the receipt shows a LUNAS (or PAID) stamp/marking, ' +
+  'false if there is no such stamp. ' +
   'If a field is unreadable, return an empty string or 0. ' +
-  'Return ONLY JSON of the shape {"buyer":{"name","address","phoneNumber"},' +
-  '"items":[{"itemName","itemQty","unitPrice"}],"grandTotal":0,"invoiceDate":""}, ' +
+  'Return ONLY JSON of the shape {"buyer":{"name","address","phoneNumber"},"items":' +
+  '[{"itemName","itemQty","unitPrice"}],"grandTotal":0,"invoiceDate":"","fullyPaid":false}, ' +
   'with no explanation.';
 
 // Per-model config: Gemma has no structured output; Gemini 3.x uses thinkingLevel

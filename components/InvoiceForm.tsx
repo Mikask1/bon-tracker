@@ -78,7 +78,7 @@ export function InvoiceForm({
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
-  const [status, setStatus] = useState<Status>('LUNAS');
+  const [status, setStatus] = useState<Status>('BELUM_LUNAS');
   const [unpaid, setUnpaid] = useState('');
   const [invDate, setInvDate] = useState(''); // yyyy-mm-dd; date printed on the nota
   const [imageUrl, setImageUrl] = useState('');
@@ -106,7 +106,7 @@ export function InvoiceForm({
     setAddress('');
     setPhone('');
     setRows([emptyRow()]);
-    setStatus('LUNAS');
+    setStatus('BELUM_LUNAS');
     setUnpaid('');
     setImageUrl('');
     setPreview('');
@@ -163,8 +163,10 @@ export function InvoiceForm({
               }))
             : [emptyRow()]
         );
-        setStatus('LUNAS');
-        setUnpaid('');
+        // Default to Belum Lunas unless the nota shows a LUNAS stamp.
+        const paid = e.fullyPaid === true;
+        setStatus(paid ? 'LUNAS' : 'BELUM_LUNAS');
+        setUnpaid(paid ? '' : String(computeGrandTotal(e.items)));
         setImageUrl(job.imageUrl);
         setPreview(job.imageUrl ? thumbUrl(job.imageUrl, 800) : '');
         setTotalStr(

@@ -42,6 +42,7 @@ import {
   ImageIcon,
   SlidersHorizontal,
   Camera,
+  Upload,
   PencilLine,
   Loader2,
   X,
@@ -481,13 +482,15 @@ export function InvoiceList() {
         </div>
       </nav>
 
-      {/* Bon Baru chooser: Foto (camera) or Manual */}
+      {/* Bon Baru chooser: Kamera, Unggah foto, or Manual */}
       <Drawer open={chooser} onOpenChange={setChooser}>
         <DrawerContent>
           <DrawerHeader className="text-center">
             <DrawerTitle>Bon Baru</DrawerTitle>
           </DrawerHeader>
           <div className="flex flex-col gap-3 px-4 pb-8">
+            {/* capture=camera forces the camera; the other input has no capture so
+                it opens the gallery / file picker (and Take Photo on iOS). */}
             <label className="w-full">
               <input
                 type="file"
@@ -502,7 +505,30 @@ export function InvoiceList() {
               />
               <Button asChild size="lg" className="h-14 w-full text-base">
                 <span>
-                  <Camera className="size-5" /> Foto
+                  <Camera className="size-5" /> Kamera
+                </span>
+              </Button>
+            </label>
+
+            <label className="w-full">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) startFoto(f);
+                }}
+              />
+              <Button
+                asChild
+                variant="secondary"
+                size="lg"
+                className="h-14 w-full text-base"
+              >
+                <span>
+                  <Upload className="size-5" /> Unggah Foto
                 </span>
               </Button>
             </label>
