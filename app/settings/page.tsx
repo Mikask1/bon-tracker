@@ -58,7 +58,7 @@ function Settings() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
-      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-2 py-3">
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-2 py-3 pr-4">
         <Button asChild variant="ghost" size="icon" aria-label="Kembali">
           <Link href="/">
             <ArrowLeft />
