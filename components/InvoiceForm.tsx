@@ -2,18 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Image } from '@imagekit/next';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
 import { useScanJobStore } from '@/store/scanJobStore';
-import { thumbUrl, toYMD, type InvoiceRow } from '@/hooks/useInvoiceRows';
+import { toYMD, type InvoiceRow } from '@/hooks/useInvoiceRows';
 import { ImageZoom } from '@/components/ImageZoom';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter,
-} from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
 import {
   computeGrandTotal,
   invoiceInputSchema,
@@ -52,19 +46,15 @@ function parseRows(rows: Row[]) {
 }
 
 export function InvoiceForm({
-  open,
-  onOpenChange,
   initial,
   jobId,
   uploading,
-  onSaved,
+  onDone,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
   initial?: InvoiceRow; // edit an existing invoice
   jobId?: string; // review a background scan job
   uploading?: boolean; // photo is uploading, before the job exists
-  onSaved?: () => void;
+  onDone: () => void; // back button, or after a successful save
 }) {
   const isEdit = !!initial;
   const router = useRouter();
@@ -84,7 +74,6 @@ export function InvoiceForm({
   const [unpaid, setUnpaid] = useState('');
   const [invDate, setInvDate] = useState(''); // yyyy-mm-dd; date printed on the nota
   const [imageUrl, setImageUrl] = useState('');
-  const [preview, setPreview] = useState('');
   // Nota total to reconcile summed items against (create only). Seeded from the scan,
   // but editable so a misread total can be corrected. Empty = no check. Never persisted.
   const [totalStr, setTotalStr] = useState('');
@@ -111,17 +100,12 @@ export function InvoiceForm({
     setStatus('BELUM_LUNAS');
     setUnpaid('');
     setImageUrl('');
-    setPreview('');
     setTotalStr('');
     setInvDate(toYMD(new Date()));
   }
 
-  // Populate once per open: from the invoice (edit), the finished scan (done), or blank.
+  // Populate once on mount: from the invoice (edit), the finished scan (done), or blank.
   useEffect(() => {
-    if (!open) {
-      populatedRef.current = false;
-      return;
-    }
     if (populatedRef.current) return;
     // Wait until the photo settles — don't populate (or mark populated) while the
     // upload/scan is still running, or the extracted data would never fill the form.
@@ -143,7 +127,6 @@ export function InvoiceForm({
       setStatus(initial.status);
       setUnpaid(initial.status === 'BELUM_LUNAS' ? String(initial.unpaidAmount) : '');
       setImageUrl(initial.imageUrl);
-      setPreview(initial.imageUrl ? thumbUrl(initial.imageUrl, 800) : '');
       setTotalStr(''); // editing a saved invoice: no reconciliation field
       setInvDate(toYMD(new Date(initial.invoiceCreatedAt)));
       populatedRef.current = true;
@@ -170,7 +153,6 @@ export function InvoiceForm({
         setStatus(paid ? 'LUNAS' : 'BELUM_LUNAS');
         setUnpaid(paid ? '' : String(computeGrandTotal(e.items)));
         setImageUrl(job.imageUrl);
-        setPreview(job.imageUrl ? thumbUrl(job.imageUrl, 800) : '');
         setTotalStr(
           typeof e.grandTotal === 'number' && e.grandTotal > 0
             ? String(Math.round(e.grandTotal))
@@ -185,7 +167,6 @@ export function InvoiceForm({
       } else if (job.status === 'error') {
         loadBlank();
         setImageUrl(job.imageUrl);
-        setPreview(job.imageUrl ? thumbUrl(job.imageUrl, 800) : '');
         populatedRef.current = true;
       }
       // scanning: wait — fields stay hidden until done
@@ -195,7 +176,7 @@ export function InvoiceForm({
     loadBlank();
     populatedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, job?.status, uploading]);
+  }, [job?.status, uploading]);
 
   const grandTotal = computeGrandTotal(parseRows(rows));
   // Reconcile summed items against the (editable) nota total. Create only; blank skips.
@@ -248,8 +229,7 @@ export function InvoiceForm({
           utils.invoices.getByLocalId.invalidate({ localId: payload.localId }),
         ]);
         toast.success('Bon diperbarui');
-        onOpenChange(false);
-        onSaved?.();
+        onDone();
       } catch (e) {
         toast.error(
           online ? (e instanceof Error ? e.message : 'Gagal memperbarui') : 'Edit perlu online'
@@ -274,24 +254,21 @@ export function InvoiceForm({
         },
       });
     }
-    onOpenChange(false);
-    onSaved?.();
+    onDone();
   }
 
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs>
-      <DrawerContent className="max-h-[92dvh]">
-        <DrawerHeader className="text-left">
-          <DrawerTitle>{isEdit ? 'Edit Bon' : 'Bon Baru'}</DrawerTitle>
-        </DrawerHeader>
+  const title = isEdit ? 'Edit Bon' : 'Bon Baru';
 
-        {busy ? (
+  const content = busy ? (
           <div className="flex flex-col items-center gap-4 px-4 py-10 text-center">
             {job?.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={thumbUrl(job.imageUrl, 600)}
+              <Image
+                src={job.imageUrl}
                 alt="Foto bon"
+                width={900}
+                height={1200}
+                responsive={false}
+                transformation={[{ width: 600, crop: 'at_max' }]}
                 className="max-h-48 w-full rounded-md object-contain"
               />
             )}
@@ -303,14 +280,11 @@ export function InvoiceForm({
         ) : (
           <>
             <div className="flex flex-col gap-4 overflow-y-auto px-4 pb-2">
-              {preview && (
-                <ImageZoom
-                  src={imageUrl || job?.imageUrl || preview}
-                  thumb={preview}
-                  alt="Foto bon"
-                  className="max-h-40 w-full rounded-md object-contain"
-                />
-              )}
+              <ImageZoom
+                src={imageUrl || job?.imageUrl || ''}
+                alt="Foto bon"
+                className="max-h-40 w-full rounded-md object-contain"
+              />
 
               {job?.status === 'error' && (
                 <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -461,14 +435,23 @@ export function InvoiceForm({
               </div>
             </div>
 
-            <DrawerFooter>
-              <Button onClick={save} disabled={saving || !reconciled}>
+            <div className="sticky bottom-0 border-t bg-background p-4">
+              <Button onClick={save} disabled={saving || !reconciled} className="w-full">
                 {saving ? 'Menyimpan…' : !reconciled ? 'Total belum cocok' : 'Simpan'}
               </Button>
-            </DrawerFooter>
+            </div>
           </>
-        )}
-      </DrawerContent>
-    </Drawer>
+        );
+
+  return (
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
+      <header className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-2 py-3">
+        <Button variant="ghost" size="icon" aria-label="Kembali" onClick={onDone}>
+          <ArrowLeft />
+        </Button>
+        <h1 className="text-lg font-bold">{title}</h1>
+      </header>
+      {content}
+    </div>
   );
 }

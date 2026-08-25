@@ -4,11 +4,10 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LoginGate } from '@/components/LoginGate';
-import { InvoiceForm } from '@/components/InvoiceForm';
 import { trpc } from '@/lib/trpc/client';
 import { useAuthStore } from '@/store/authStore';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
-import { serverToRow, pendingToRow, thumbUrl } from '@/hooks/useInvoiceRows';
+import { serverToRow, pendingToRow } from '@/hooks/useInvoiceRows';
 import { ImageZoom } from '@/components/ImageZoom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,6 @@ function Detail({ localId }: { localId: string }) {
   );
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -130,14 +128,11 @@ function Detail({ localId }: { localId: string }) {
             </span>
           </div>
 
-          {inv.imageUrl && (
-            <ImageZoom
-              src={inv.imageUrl}
-              thumb={thumbUrl(inv.imageUrl, 800)}
-              alt="Foto bon"
-              className="w-full rounded-lg border object-contain"
-            />
-          )}
+          <ImageZoom
+            src={inv.imageUrl}
+            alt="Foto bon"
+            className="w-full rounded-lg border object-contain"
+          />
 
           {/* Buyer */}
           <section>
@@ -195,10 +190,6 @@ function Detail({ localId }: { localId: string }) {
         </div>
       )}
 
-      {inv && (
-        <InvoiceForm open={editOpen} onOpenChange={setEditOpen} initial={inv} />
-      )}
-
       <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
         <DrawerContent>
           <DrawerHeader className="text-left">
@@ -209,7 +200,7 @@ function Detail({ localId }: { localId: string }) {
               variant="outline"
               onClick={() => {
                 setMenuOpen(false);
-                setEditOpen(true);
+                router.push(`/invoice/${localId}/edit`);
               }}
             >
               <Pencil /> Edit
