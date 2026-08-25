@@ -203,6 +203,11 @@ export function InvoiceList() {
 
   const rows = [...pendingRows, ...serverRows];
   const groups = groupByDay(rows);
+  // keepPreviousData holds the old rows on screen while a new query runs, so
+  // changing a filter looks like it did nothing. Fall back to the skeleton
+  // whenever what's displayed no longer answers the active filters.
+  const showSkeleton =
+    list.isLoading || (list.isFetching && list.isPlaceholderData);
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const end = Math.min(page * PAGE_SIZE, total);
 
@@ -277,53 +282,40 @@ export function InvoiceList() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="filter-date-from"
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Dari tanggal
-                </label>
-                <Input
-                  id="filter-date-from"
-                  type="date"
-                  className="h-11"
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    resetPage();
-                  }}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="filter-date-to"
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Sampai tanggal
-                </label>
-                <Input
-                  id="filter-date-to"
-                  type="date"
-                  className="h-11"
-                  value={to}
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    resetPage();
-                  }}
-                />
-              </div>
+            {/* min-w-0 is load-bearing: a native date input's min-content width
+                won't shrink, so without it the two boxes overflow the row and
+                collide. The em-dash carries "range" without needing labels. */}
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                aria-label="Dari tanggal"
+                className="h-11 min-w-0 flex-1"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  resetPage();
+                }}
+              />
+              <span className="shrink-0 text-muted-foreground">—</span>
+              <Input
+                type="date"
+                aria-label="Sampai tanggal"
+                className="h-11 min-w-0 flex-1"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  resetPage();
+                }}
+              />
             </div>
           </div>
         )}
       </header>
 
       <div className="flex flex-col pb-28">
-        {list.isLoading && <InvoiceListSkeleton />}
-
         {/* active scan jobs — pinned above the ledger; they aren't bons yet, so they
-            have no invoice date to file under a day heading */}
+            have no invoice date to file under a day heading. Local state, so they
+            stay put while the server list reloads. */}
         {jobRows.map((j) => (
           <div key={j.localId} className="flex items-center gap-3 border-b p-4">
             <button
@@ -368,7 +360,9 @@ export function InvoiceList() {
           </div>
         ))}
 
-        {!list.isLoading && rows.length === 0 && jobRows.length === 0 && (
+        {showSkeleton && <InvoiceListSkeleton />}
+
+        {!showSkeleton && rows.length === 0 && jobRows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {total === 0 && !dq && status === 'ALL' && !from && !to
               ? 'Belum ada bon. Tekan tombol + untuk menambah.'
@@ -378,7 +372,8 @@ export function InvoiceList() {
 
         {/* The ledger: one heading per day, entries ruled underneath it. The date is
             printed once per group instead of once per row. */}
-        {groups.map((g) => (
+        {!showSkeleton &&
+          groups.map((g) => (
           <section key={g.key}>
             <h2 className="px-4 pb-1 pt-5 font-semibold">{formatDayHeading(g.date)}</h2>
 
@@ -446,7 +441,7 @@ export function InvoiceList() {
           </section>
         ))}
 
-        {total > 0 && (
+        {total > 0 && !showSkeleton && (
           <div className="flex items-center justify-between border-t p-4 text-sm">
             <span className="text-muted-foreground">
               {start}–{end} dari {total}
