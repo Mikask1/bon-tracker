@@ -10,6 +10,7 @@ import { InvoiceThumb } from '@/components/InvoiceThumb';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { uploadImage } from '@/lib/upload';
+import { prepareScanImage, type ScanImage } from '@/lib/compressImage';
 import { sha256 } from '@/lib/hash';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -72,13 +73,15 @@ export function InvoiceList() {
   const router = useRouter();
   const runningRef = useRef<Set<string>>(new Set());
 
-  // Scan runs detached from the drawer (InvoiceList stays mounted). Server fetches
-  // the image from its URL, so a job only carries the URL — resumable after reload.
-  async function runScan(localId: string, imageUrl: string) {
+  // Scan runs detached from the form page (InvoiceList stays mounted). `image` is
+  // the original photo's bytes, passed straight through for full-quality OCR; it
+  // is deliberately never persisted, so a job still carries only its URL and a
+  // resumed scan after a reload falls back to the stored (compressed) image.
+  async function runScan(localId: string, imageUrl: string, image?: ScanImage) {
     if (runningRef.current.has(localId)) return;
     runningRef.current.add(localId);
     try {
-      const data = await scan.mutateAsync({ imageUrl });
+      const data = await scan.mutateAsync({ imageUrl, image: image ?? undefined });
       updateJob(localId, { status: 'done', extracted: data });
     } catch (e) {
       updateJob(localId, {
@@ -108,11 +111,15 @@ export function InvoiceList() {
     doUpload(file, hash);
   }
 
-  // Upload the photo, then create the (tiny, URL-only) job and scan it.
+  // Upload the (compressed) photo, then create the tiny URL-only job and scan it
+  // — the scan gets the original bytes, which only exist here in memory.
   async function doUpload(file: File, hash: string) {
     const toastId = toast.loading('Mengunggah…');
     try {
-      const url = await uploadImage(file);
+      const [url, scanImage] = await Promise.all([
+        uploadImage(file),
+        prepareScanImage(file),
+      ]);
       const localId = crypto.randomUUID();
       addJob({
         localId,
@@ -121,7 +128,7 @@ export function InvoiceList() {
         imageHash: hash,
         createdAt: new Date().toISOString(),
       });
-      runScan(localId, url);
+      runScan(localId, url, scanImage ?? undefined);
       toast.dismiss(toastId);
       router.push(`/invoice/new/${localId}`);
     } catch (e) {

@@ -41,10 +41,12 @@ export function ImageZoom({
           <Image
             src={src}
             alt={alt}
-            width={1200}
-            height={1600}
+            width={1000}
+            height={1333}
             responsive={false}
-            transformation={[{ width: 1600, crop: 'at_max' }]}
+            // Matches STORAGE_MAX_DIMENSION — asking for more than was stored
+            // only buys an extra cached variant of the same pixels.
+            transformation={[{ width: 1000, crop: 'at_max' }]}
             onClick={() => setOpen(false)}
             className="max-h-[85dvh] w-full rounded-lg object-contain"
           />

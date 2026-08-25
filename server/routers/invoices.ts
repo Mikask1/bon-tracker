@@ -146,12 +146,24 @@ export const invoicesRouter = router({
       return { localId: input.localId };
     }),
 
-  // Online-only vision extraction. Takes the already-uploaded ImageKit URL and
-  // fetches the bytes server-side — the client never holds base64, so a scan job
-  // only needs to persist the URL (tiny) and can resume after a reload.
+  // Online-only vision extraction. The client sends the photo's original bytes
+  // inline when it still has them, so the model reads full quality even though
+  // only a heavily compressed copy is kept in ImageKit. They're never persisted
+  // client-side (a scan job stores just the URL), so on a resumed scan after a
+  // reload they're absent and the stored image is fetched server-side instead.
   scan: protectedProcedure
-    .input(z.object({ imageUrl: z.string().url() }))
+    .input(
+      z.object({
+        imageUrl: z.string().url(),
+        image: z
+          .object({ base64: z.string(), mimeType: z.string() })
+          .optional(),
+      })
+    )
     .mutation(async ({ input }) => {
+      if (input.image) {
+        return extractInvoice(input.image.base64, input.image.mimeType);
+      }
       const r = await fetch(input.imageUrl);
       if (!r.ok) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Gagal mengambil gambar' });
