@@ -19,13 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { InvoiceListSkeleton } from '@/components/Skeletons';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Drawer,
   DrawerContent,
   DrawerHeader,
@@ -145,12 +138,17 @@ export function InvoiceList() {
   }, []);
 
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<'ALL' | Status>('ALL');
+  // Independent toggles: both or neither selected means no status filter (show all).
+  const [lunasOn, setLunasOn] = useState(false);
+  const [belumLunasOn, setBelumLunasOn] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const dq = useDebounced(q);
+
+  const status: 'ALL' | Status =
+    lunasOn && !belumLunasOn ? 'LUNAS' : belumLunasOn && !lunasOn ? 'BELUM_LUNAS' : 'ALL';
 
   const filtersActive = status !== 'ALL' || !!from || !!to;
 
@@ -231,22 +229,32 @@ export function InvoiceList() {
         {showFilters && (
           <div className="flex flex-col gap-2 pt-1">
             <div className="flex gap-2">
-              <Select
-                value={status}
-                onValueChange={(v) => {
-                  setStatus(v as 'ALL' | Status);
+              <Button
+                type="button"
+                variant={lunasOn ? 'default' : 'outline'}
+                className={
+                  lunasOn ? 'flex-1 bg-blue-600 text-white hover:bg-blue-600/90' : 'flex-1'
+                }
+                aria-pressed={lunasOn}
+                onClick={() => {
+                  setLunasOn((v) => !v);
                   resetPage();
                 }}
               >
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Semua status</SelectItem>
-                  <SelectItem value="LUNAS">Lunas</SelectItem>
-                  <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
-                </SelectContent>
-              </Select>
+                Lunas
+              </Button>
+              <Button
+                type="button"
+                variant={belumLunasOn ? 'destructive' : 'outline'}
+                className="flex-1"
+                aria-pressed={belumLunasOn}
+                onClick={() => {
+                  setBelumLunasOn((v) => !v);
+                  resetPage();
+                }}
+              >
+                Belum Lunas
+              </Button>
             </div>
 
             <div className="flex items-center gap-2 text-sm">

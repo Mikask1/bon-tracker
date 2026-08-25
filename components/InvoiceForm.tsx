@@ -11,13 +11,6 @@ import { ImageZoom } from '@/components/ImageZoom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
 import {
@@ -406,22 +399,36 @@ export function InvoiceForm({
 
               <div className="flex flex-col gap-2">
                 <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => {
-                    const s = v as Status;
-                    setStatus(s);
-                    setUnpaid(s === 'BELUM_LUNAS' ? String(grandTotal) : '');
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LUNAS">Lunas</SelectItem>
-                    <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={status === 'LUNAS' ? 'default' : 'outline'}
+                    className={
+                      status === 'LUNAS'
+                        ? 'flex-1 bg-blue-600 text-white hover:bg-blue-600/90'
+                        : 'flex-1'
+                    }
+                    aria-pressed={status === 'LUNAS'}
+                    onClick={() => {
+                      setStatus('LUNAS');
+                      setUnpaid('');
+                    }}
+                  >
+                    Lunas
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={status === 'BELUM_LUNAS' ? 'destructive' : 'outline'}
+                    className="flex-1"
+                    aria-pressed={status === 'BELUM_LUNAS'}
+                    onClick={() => {
+                      setStatus('BELUM_LUNAS');
+                      setUnpaid(String(grandTotal));
+                    }}
+                  >
+                    Belum Lunas
+                  </Button>
+                </div>
                 {status === 'BELUM_LUNAS' && (
                   <>
                     <Label>Jumlah belum dibayar</Label>
