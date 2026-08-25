@@ -55,6 +55,49 @@ export function pendingToRow(p: PendingInvoice): InvoiceRow {
   };
 }
 
+export interface DayGroup {
+  key: string; // yyyy-mm-dd, local
+  date: Date;
+  rows: InvoiceRow[];
+  total: number;
+}
+
+// Group rows under one heading per day, newest day first. Rows are sorted here
+// rather than relying on the server order, because unsynced drafts are merged in
+// client-side and would otherwise open a stray group above today's.
+//
+// `total` sums only the rows in this group — i.e. what is actually listed. A day
+// straddling a pagination boundary therefore shows a partial total on each page;
+// grouping server-side is what would fix that properly.
+export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
+  const sorted = [...rows].sort(
+    (a, b) => b.invoiceCreatedAt.getTime() - a.invoiceCreatedAt.getTime()
+  );
+  const groups: DayGroup[] = [];
+  const byKey = new Map<string, DayGroup>();
+
+  for (const r of sorted) {
+    const key = toYMD(r.invoiceCreatedAt);
+    let g = byKey.get(key);
+    if (!g) {
+      g = { key, date: r.invoiceCreatedAt, rows: [], total: 0 };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+    g.rows.push(r);
+    g.total += r.grandTotal;
+  }
+  return groups;
+}
+
+// One-line summary of what was bought — the recognition cue that replaces the
+// buyer's address and phone in the ledger row.
+export function itemSummary(items: Item[]): string {
+  if (items.length === 0) return '';
+  const first = items[0].itemName;
+  return items.length > 1 ? `${first}, +${items.length - 1} lain` : first;
+}
+
 // yyyy-mm-dd in local time (matches the date-range inputs).
 export function toYMD(d: Date): string {
   const off = d.getTimezoneOffset();

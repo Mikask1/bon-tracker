@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
-import { serverToRow, pendingToRow, matchesFilters } from '@/hooks/useInvoiceRows';
+import {
+  serverToRow,
+  pendingToRow,
+  matchesFilters,
+  groupByDay,
+  itemSummary,
+} from '@/hooks/useInvoiceRows';
 import { InvoiceThumb } from '@/components/InvoiceThumb';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
@@ -43,7 +49,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { formatRupiah } from '@/lib/format';
+import { formatRupiah, formatDayHeading } from '@/lib/format';
 import type { Status } from '@/types/invoice';
 
 const PAGE_SIZE = 15;
@@ -191,6 +197,7 @@ export function InvoiceList() {
   const jobRows = Object.values(jobsMap).filter((j) => !savedIds.has(j.localId));
 
   const rows = [...pendingRows, ...serverRows];
+  const groups = groupByDay(rows);
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const end = Math.min(page * PAGE_SIZE, total);
 
@@ -226,6 +233,7 @@ export function InvoiceList() {
               <span className="absolute right-1 top-1 size-2 rounded-full bg-primary ring-2 ring-background" />
             )}
           </Button>
+          <SettingsButton />
         </div>
 
         {showFilters && (
@@ -274,12 +282,13 @@ export function InvoiceList() {
         )}
       </header>
 
-      <div className="flex flex-col divide-y pb-28">
+      <div className="flex flex-col pb-28">
         {list.isLoading && <InvoiceListSkeleton />}
 
-        {/* active scan jobs */}
+        {/* active scan jobs — pinned above the ledger; they aren't bons yet, so they
+            have no invoice date to file under a day heading */}
         {jobRows.map((j) => (
-          <div key={j.localId} className="flex items-center gap-3 p-4">
+          <div key={j.localId} className="flex items-center gap-3 border-b p-4">
             <button
               onClick={() => router.push(`/invoice/new/${j.localId}`)}
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -330,67 +339,83 @@ export function InvoiceList() {
           </p>
         )}
 
-        {rows.map((r) => (
-          <Link
-            key={r.localId}
-            href={`/invoice/${r.localId}`}
-            className="flex items-start gap-3 p-4 active:bg-muted/50"
-          >
-            <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-              <InvoiceThumb src={r.imageUrl} size={112} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {r.invoiceId?.toUpperCase() ?? 'Draf'}
-                </span>
-                {r.sync === 'pending' && (
-                  <Badge variant="secondary" className="text-[0.625rem]">
-                    Menunggu sinkron
-                  </Badge>
-                )}
-                {r.sync === 'error' && (
-                  <Badge variant="destructive" className="text-[0.625rem]">
-                    Gagal sinkron
-                  </Badge>
-                )}
-              </div>
-              <p className="truncate font-medium">{r.buyer.name || '—'}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                {r.buyer.address}
-              </p>
-              {r.buyer.phoneNumber && (
-                <p className="truncate text-sm text-muted-foreground">
-                  {r.buyer.phoneNumber}
-                </p>
-              )}
-            </div>
-
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {r.status === 'LUNAS' ? (
-                <Badge className="bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-600">
-                  Lunas
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="px-3 py-1 text-sm">
-                  Belum Lunas
-                </Badge>
-              )}
-              {r.status === 'BELUM_LUNAS' && (
-                <span className="text-sm font-semibold text-destructive">
-                  Sisa {formatRupiah(r.unpaidAmount)}
-                </span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {formatRupiah(r.grandTotal)}
+        {/* The ledger: one heading per day, entries ruled underneath it. The date is
+            printed once per group instead of once per row, and the amounts sit in
+            their own right-aligned column so they can be compared down the page. */}
+        {groups.map((g) => (
+          <section key={g.key}>
+            <div className="flex items-baseline justify-between gap-2 px-4 pb-1 pt-5">
+              <h2 className="font-semibold">{formatDayHeading(g.date)}</h2>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {g.rows.length} bon · {formatRupiah(g.total)}
               </span>
             </div>
-          </Link>
+
+            {g.rows.map((r) => {
+              const paid = r.status === 'LUNAS';
+              const partial =
+                !paid && r.unpaidAmount > 0 && r.unpaidAmount < r.grandTotal;
+              const summary = itemSummary(r.items);
+              return (
+                <Link
+                  key={r.localId}
+                  href={`/invoice/${r.localId}`}
+                  className="relative ml-4 flex items-center gap-3 border-t py-3 pr-4 active:bg-muted/50"
+                >
+                  {/* Status spine. Length and position carry the state as well as
+                      hue does, so it survives red/green colour deficiency. */}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 -left-4 w-1 ${
+                      paid ? 'bg-emerald-600' : 'bg-destructive'
+                    }`}
+                  />
+
+                  <div className="min-w-0 flex-1 pl-3">
+                    <p className="truncate font-medium">{r.buyer.name || '—'}</p>
+                    {summary && (
+                      <p className="truncate text-sm text-muted-foreground">
+                        {summary}
+                      </p>
+                    )}
+                    {r.sync === 'pending' && (
+                      <Badge variant="secondary" className="mt-1">
+                        Menunggu sinkron
+                      </Badge>
+                    )}
+                    {r.sync === 'error' && (
+                      <Badge variant="destructive" className="mt-1">
+                        Gagal sinkron
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex min-w-28 shrink-0 flex-col items-end border-l pl-3">
+                    <span className="font-semibold tabular-nums">
+                      {formatRupiah(r.grandTotal)}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold tabular-nums ${
+                        paid
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : 'text-destructive'
+                      }`}
+                    >
+                      {paid
+                        ? 'Lunas'
+                        : partial
+                          ? `Sisa ${formatRupiah(r.unpaidAmount)}`
+                          : 'Belum'}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
         ))}
 
         {total > 0 && (
-          <div className="flex items-center justify-between p-4 text-sm">
+          <div className="flex items-center justify-between border-t p-4 text-sm">
             <span className="text-muted-foreground">
               {start}–{end} dari {total}
             </span>
@@ -418,19 +443,16 @@ export function InvoiceList() {
         )}
       </div>
 
-      {/* bottom app bar with a seated + action */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-        <div className="relative mx-auto h-20 max-w-2xl">
-          <div className="absolute left-[max(1rem,env(safe-area-inset-left))] top-3">
-            <SettingsButton />
-          </div>
+      {/* Bottom bar: one full-width, labelled primary action. Settings moved up to
+          the header, so nothing else competes with it down here. */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
+        <div className="mx-auto max-w-2xl">
           <Button
-            size="icon"
+            size="lg"
             onClick={() => setChooser(true)}
-            aria-label="Bon baru"
-            className="absolute left-1/2 top-0 h-16 w-16 -translate-x-1/2 -translate-y-1/3 rounded-full shadow-lg"
+            className="h-14 w-full text-base font-bold"
           >
-            <Plus className="size-7" />
+            <Plus className="size-5" /> Bon Baru
           </Button>
         </div>
       </nav>
