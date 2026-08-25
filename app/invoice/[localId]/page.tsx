@@ -4,11 +4,10 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LoginGate } from '@/components/LoginGate';
-import { InvoiceForm } from '@/components/InvoiceForm';
 import { trpc } from '@/lib/trpc/client';
 import { useAuthStore } from '@/store/authStore';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
-import { serverToRow, pendingToRow, thumbUrl } from '@/hooks/useInvoiceRows';
+import { serverToRow, pendingToRow } from '@/hooks/useInvoiceRows';
 import { ImageZoom } from '@/components/ImageZoom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,7 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from '@/components/ui/drawer';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatRupiah, formatDate } from '@/lib/format';
 
@@ -51,7 +50,7 @@ function Detail({ localId }: { localId: string }) {
     { enabled: !pending }
   );
 
-  const [editOpen, setEditOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -89,19 +88,15 @@ function Detail({ localId }: { localId: string }) {
         </Button>
         <h1 className="text-lg font-bold">{inv?.invoiceId?.toUpperCase() ?? 'Detail Bon'}</h1>
         {inv && isAdmin && (
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-              <Pencil /> Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Hapus"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="text-destructive" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Menu"
+            className="ml-auto"
+            onClick={() => setMenuOpen(true)}
+          >
+            <MoreVertical />
+          </Button>
         )}
       </header>
 
@@ -133,14 +128,11 @@ function Detail({ localId }: { localId: string }) {
             </span>
           </div>
 
-          {inv.imageUrl && (
-            <ImageZoom
-              src={inv.imageUrl}
-              thumb={thumbUrl(inv.imageUrl, 800)}
-              alt="Foto bon"
-              className="w-full rounded-lg border object-contain"
-            />
-          )}
+          <ImageZoom
+            src={inv.imageUrl}
+            alt="Foto bon"
+            className="w-full rounded-lg border object-contain"
+          />
 
           {/* Buyer */}
           <section>
@@ -198,9 +190,33 @@ function Detail({ localId }: { localId: string }) {
         </div>
       )}
 
-      {inv && (
-        <InvoiceForm open={editOpen} onOpenChange={setEditOpen} initial={inv} />
-      )}
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{inv?.invoiceId?.toUpperCase() ?? 'Bon'}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMenuOpen(false);
+                router.push(`/invoice/${localId}/edit`);
+              }}
+            >
+              <Pencil /> Edit
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setMenuOpen(false);
+                setConfirmDelete(true);
+              }}
+            >
+              <Trash2 /> Hapus
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       <Drawer open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DrawerContent>

@@ -88,10 +88,3 @@ export function matchesFilters(
   }
   return true;
 }
-
-// ImageKit URL transformation for a square thumbnail. Empty string when no image.
-export function thumbUrl(url: string, size = 120): string {
-  if (!url) return '';
-  const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}tr=w-${size},h-${size},fo-auto`;
-}

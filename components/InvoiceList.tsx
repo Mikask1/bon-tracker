@@ -5,16 +5,12 @@ import Link from 'next/link';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
-import {
-  serverToRow,
-  pendingToRow,
-  matchesFilters,
-  thumbUrl,
-} from '@/hooks/useInvoiceRows';
-import { InvoiceForm } from './InvoiceForm';
+import { serverToRow, pendingToRow, matchesFilters } from '@/hooks/useInvoiceRows';
+import { InvoiceThumb } from '@/components/InvoiceThumb';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { uploadImage } from '@/lib/upload';
+import { prepareScanImage, type ScanImage } from '@/lib/compressImage';
 import { sha256 } from '@/lib/hash';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -38,7 +34,6 @@ import {
 import {
   Plus,
   Search,
-  ImageIcon,
   SlidersHorizontal,
   Camera,
   Upload,
@@ -63,10 +58,7 @@ function useDebounced<T>(value: T, ms = 300): T {
 }
 
 export function InvoiceList() {
-  const [open, setOpen] = useState(false);
   const [chooser, setChooser] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
   const [cancelJobId, setCancelJobId] = useState<string | undefined>(undefined);
   const [dup, setDup] = useState<
     { file: File; hash: string; localId: string; invoiceId: string } | null
@@ -81,13 +73,15 @@ export function InvoiceList() {
   const router = useRouter();
   const runningRef = useRef<Set<string>>(new Set());
 
-  // Scan runs detached from the drawer (InvoiceList stays mounted). Server fetches
-  // the image from its URL, so a job only carries the URL — resumable after reload.
-  async function runScan(localId: string, imageUrl: string) {
+  // Scan runs detached from the form page (InvoiceList stays mounted). `image` is
+  // the original photo's bytes, passed straight through for full-quality OCR; it
+  // is deliberately never persisted, so a job still carries only its URL and a
+  // resumed scan after a reload falls back to the stored (compressed) image.
+  async function runScan(localId: string, imageUrl: string, image?: ScanImage) {
     if (runningRef.current.has(localId)) return;
     runningRef.current.add(localId);
     try {
-      const data = await scan.mutateAsync({ imageUrl });
+      const data = await scan.mutateAsync({ imageUrl, image: image ?? undefined });
       updateJob(localId, { status: 'done', extracted: data });
     } catch (e) {
       updateJob(localId, {
@@ -117,13 +111,15 @@ export function InvoiceList() {
     doUpload(file, hash);
   }
 
-  // Upload the photo, then create the (tiny, URL-only) job and scan it.
+  // Upload the (compressed) photo, then create the tiny URL-only job and scan it
+  // — the scan gets the original bytes, which only exist here in memory.
   async function doUpload(file: File, hash: string) {
-    setActiveJobId(undefined);
-    setUploading(true);
-    setOpen(true);
+    const toastId = toast.loading('Mengunggah…');
     try {
-      const url = await uploadImage(file);
+      const [url, scanImage] = await Promise.all([
+        uploadImage(file),
+        prepareScanImage(file),
+      ]);
       const localId = crypto.randomUUID();
       addJob({
         localId,
@@ -132,13 +128,11 @@ export function InvoiceList() {
         imageHash: hash,
         createdAt: new Date().toISOString(),
       });
-      setActiveJobId(localId);
-      runScan(localId, url);
+      runScan(localId, url, scanImage ?? undefined);
+      toast.dismiss(toastId);
+      router.push(`/invoice/new/${localId}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Upload gagal');
-      setOpen(false);
-    } finally {
-      setUploading(false);
+      toast.error(e instanceof Error ? e.message : 'Upload gagal', { id: toastId });
     }
   }
 
@@ -287,25 +281,11 @@ export function InvoiceList() {
         {jobRows.map((j) => (
           <div key={j.localId} className="flex items-center gap-3 p-4">
             <button
-              onClick={() => {
-                setActiveJobId(j.localId);
-                setOpen(true);
-              }}
+              onClick={() => router.push(`/invoice/new/${j.localId}`)}
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
             >
               <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-                {j.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={thumbUrl(j.imageUrl, 112)}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center text-muted-foreground">
-                    <ImageIcon className="size-5" />
-                  </div>
-                )}
+                <InvoiceThumb src={j.imageUrl} size={112} />
               </div>
               <div className="min-w-0 flex-1">
                 {j.status === 'scanning' && (
@@ -357,19 +337,7 @@ export function InvoiceList() {
             className="flex items-start gap-3 p-4 active:bg-muted/50"
           >
             <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-              {r.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={thumbUrl(r.imageUrl, 112)}
-                  alt=""
-                  loading="lazy"
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground">
-                  <ImageIcon className="size-5" />
-                </div>
-              )}
+              <InvoiceThumb src={r.imageUrl} size={112} />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -530,8 +498,7 @@ export function InvoiceList() {
               className="h-14 w-full text-base"
               onClick={() => {
                 setChooser(false);
-                setActiveJobId(undefined);
-                setOpen(true);
+                router.push('/invoice/new');
               }}
             >
               <PencilLine className="size-5" /> Manual
@@ -539,16 +506,6 @@ export function InvoiceList() {
           </div>
         </DrawerContent>
       </Drawer>
-
-      <InvoiceForm
-        open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (!v) setActiveJobId(undefined);
-        }}
-        jobId={activeJobId}
-        uploading={uploading}
-      />
 
       {/* duplicate photo — already saved as an invoice */}
       <Drawer open={!!dup} onOpenChange={(v) => !v && setDup(null)}>

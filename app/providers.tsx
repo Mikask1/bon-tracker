@@ -5,9 +5,17 @@ import { useEffect, useState } from 'react';
 import { trpc, getTRPCClient } from '@/lib/trpc/client';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { ImageKitProvider } from '@imagekit/next';
 import { Toaster } from '@/components/ui/sonner';
 import { SyncManager } from '@/components/SyncManager';
 import { FontScaleApplier } from '@/components/FontScale';
+
+// Every stored imageUrl is already an absolute ik.imagekit.io URL (returned by the
+// upload API), so this endpoint is never actually used to build a path — it only
+// satisfies the provider's required-prop check. Set NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+// to your real ImageKit URL endpoint if that ever changes.
+const IMAGEKIT_URL_ENDPOINT =
+  process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,12 +54,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   const inner = (
-    <>
+    <ImageKitProvider urlEndpoint={IMAGEKIT_URL_ENDPOINT}>
       {children}
       <SyncManager />
       <FontScaleApplier />
       <Toaster position="top-center" richColors />
-    </>
+    </ImageKitProvider>
   );
 
   if (persister) {
