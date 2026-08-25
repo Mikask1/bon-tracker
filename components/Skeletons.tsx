@@ -10,9 +10,8 @@ function InvoiceRowSkeleton() {
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-3 w-44" />
       </div>
-      <div className="flex min-w-32 shrink-0 flex-col items-end gap-2 border-l pl-3">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-4 w-24" />
+      <div className="min-w-24 shrink-0 border-l pl-3">
+        <Skeleton className="ml-auto h-4 w-20" />
       </div>
     </div>
   );
@@ -31,9 +30,12 @@ export function InvoiceListSkeleton({
     <>
       {Array.from({ length: days }, (_, d) => (
         <section key={d}>
-          <div className="flex items-baseline justify-between gap-2 px-4 pb-1 pt-5">
+          <div className="flex items-start justify-between gap-2 px-4 pb-1 pt-5">
             <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-3 w-28" />
+            <div className="flex flex-col items-end gap-1.5">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-3 w-24" />
+            </div>
           </div>
           {Array.from({ length: perDay }, (_, i) => (
             <InvoiceRowSkeleton key={i} />

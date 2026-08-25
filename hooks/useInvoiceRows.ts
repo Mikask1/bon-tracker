@@ -59,7 +59,6 @@ export interface DayGroup {
   key: string; // yyyy-mm-dd, local
   date: Date;
   rows: InvoiceRow[];
-  total: number;
   outstanding: number; // still owed across this day's bons
 }
 
@@ -67,9 +66,9 @@ export interface DayGroup {
 // rather than relying on the server order, because unsynced drafts are merged in
 // client-side and would otherwise open a stray group above today's.
 //
-// `total` sums only the rows in this group — i.e. what is actually listed. A day
-// straddling a pagination boundary therefore shows a partial total on each page;
-// grouping server-side is what would fix that properly.
+// `outstanding` sums only the rows in this group — i.e. what is actually listed.
+// A day straddling a pagination boundary therefore shows a partial figure on each
+// page; grouping server-side is what would fix that properly.
 export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
   const sorted = [...rows].sort(
     (a, b) => b.invoiceCreatedAt.getTime() - a.invoiceCreatedAt.getTime()
@@ -81,12 +80,11 @@ export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
     const key = toYMD(r.invoiceCreatedAt);
     let g = byKey.get(key);
     if (!g) {
-      g = { key, date: r.invoiceCreatedAt, rows: [], total: 0, outstanding: 0 };
+      g = { key, date: r.invoiceCreatedAt, rows: [], outstanding: 0 };
       byKey.set(key, g);
       groups.push(g);
     }
     g.rows.push(r);
-    g.total += r.grandTotal;
     if (r.status === 'BELUM_LUNAS') g.outstanding += r.unpaidAmount;
   }
   return groups;

@@ -347,21 +347,19 @@ export function InvoiceList() {
             <div className="flex items-start justify-between gap-2 px-4 pb-1 pt-5">
               <h2 className="font-semibold">{formatDayHeading(g.date)}</h2>
               <div className="shrink-0 pt-0.5 text-right">
-                <p className="text-xs tabular-nums text-muted-foreground">
-                  {g.rows.length} bon · {formatRupiah(g.total)}
+                <p className="text-xs text-muted-foreground">{g.rows.length} bon</p>
+                <p
+                  className={`text-xs font-semibold tabular-nums ${
+                    g.outstanding > 0 ? 'text-destructive' : 'text-blue-700 dark:text-blue-400'
+                  }`}
+                >
+                  {g.outstanding > 0 ? `sisa ${formatRupiah(g.outstanding)}` : 'lunas semua'}
                 </p>
-                {g.outstanding > 0 && (
-                  <p className="text-xs font-semibold tabular-nums text-destructive">
-                    sisa {formatRupiah(g.outstanding)}
-                  </p>
-                )}
               </div>
             </div>
 
             {g.rows.map((r) => {
               const paid = r.status === 'LUNAS';
-              const partial =
-                !paid && r.unpaidAmount > 0 && r.unpaidAmount < r.grandTotal;
               const summary = itemSummary(r.items);
               return (
                 <Link
@@ -397,33 +395,18 @@ export function InvoiceList() {
                     )}
                   </div>
 
-                  {/* Whether it is paid, and how much is still owed — that is what
-                      this column is for. The grand total is the supporting
-                      figure, so it is set small and muted underneath. */}
-                  <div className="flex min-w-32 shrink-0 flex-col items-end border-l pl-3 text-right">
+                  {/* Whether it is paid, and how much is still owed — nothing else.
+                      The grand total isn't the question a bon list answers, so it
+                      doesn't appear here at all (it's still on the detail page). */}
+                  <div className="min-w-24 shrink-0 border-l pl-3 text-right">
                     {paid ? (
-                      <>
-                        <span className="font-semibold text-blue-700 dark:text-blue-400">
-                          Lunas
-                        </span>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {formatRupiah(r.grandTotal)}
-                        </span>
-                      </>
+                      <span className="font-semibold text-blue-700 dark:text-blue-400">
+                        Lunas
+                      </span>
                     ) : (
-                      <>
-                        <span className="text-xs font-semibold text-destructive">
-                          Belum Lunas
-                        </span>
-                        <span className="font-semibold tabular-nums text-destructive">
-                          Sisa {formatRupiah(r.unpaidAmount)}
-                        </span>
-                        {partial && (
-                          <span className="text-xs tabular-nums text-muted-foreground">
-                            dari {formatRupiah(r.grandTotal)}
-                          </span>
-                        )}
-                      </>
+                      <span className="font-semibold tabular-nums text-destructive">
+                        Sisa {formatRupiah(r.unpaidAmount)}
+                      </span>
                     )}
                   </div>
                 </Link>
