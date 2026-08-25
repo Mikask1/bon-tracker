@@ -59,16 +59,11 @@ export interface DayGroup {
   key: string; // yyyy-mm-dd, local
   date: Date;
   rows: InvoiceRow[];
-  outstanding: number; // still owed across this day's bons
 }
 
 // Group rows under one heading per day, newest day first. Rows are sorted here
 // rather than relying on the server order, because unsynced drafts are merged in
 // client-side and would otherwise open a stray group above today's.
-//
-// `outstanding` sums only the rows in this group — i.e. what is actually listed.
-// A day straddling a pagination boundary therefore shows a partial figure on each
-// page; grouping server-side is what would fix that properly.
 export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
   const sorted = [...rows].sort(
     (a, b) => b.invoiceCreatedAt.getTime() - a.invoiceCreatedAt.getTime()
@@ -80,12 +75,11 @@ export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
     const key = toYMD(r.invoiceCreatedAt);
     let g = byKey.get(key);
     if (!g) {
-      g = { key, date: r.invoiceCreatedAt, rows: [], outstanding: 0 };
+      g = { key, date: r.invoiceCreatedAt, rows: [] };
       byKey.set(key, g);
       groups.push(g);
     }
     g.rows.push(r);
-    if (r.status === 'BELUM_LUNAS') g.outstanding += r.unpaidAmount;
   }
   return groups;
 }

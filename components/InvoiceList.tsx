@@ -340,23 +340,10 @@ export function InvoiceList() {
         )}
 
         {/* The ledger: one heading per day, entries ruled underneath it. The date is
-            printed once per group instead of once per row, and the amounts sit in
-            their own right-aligned column so they can be compared down the page. */}
+            printed once per group instead of once per row. */}
         {groups.map((g) => (
           <section key={g.key}>
-            <div className="flex items-start justify-between gap-2 px-4 pb-1 pt-5">
-              <h2 className="font-semibold">{formatDayHeading(g.date)}</h2>
-              <div className="shrink-0 pt-0.5 text-right">
-                <p className="text-xs text-muted-foreground">{g.rows.length} bon</p>
-                <p
-                  className={`text-xs font-semibold tabular-nums ${
-                    g.outstanding > 0 ? 'text-destructive' : 'text-blue-700 dark:text-blue-400'
-                  }`}
-                >
-                  {g.outstanding > 0 ? `sisa ${formatRupiah(g.outstanding)}` : 'lunas semua'}
-                </p>
-              </div>
-            </div>
+            <h2 className="px-4 pb-1 pt-5 font-semibold">{formatDayHeading(g.date)}</h2>
 
             {g.rows.map((r) => {
               const paid = r.status === 'LUNAS';
@@ -398,7 +385,7 @@ export function InvoiceList() {
                   {/* Whether it is paid, and how much is still owed — nothing else.
                       The grand total isn't the question a bon list answers, so it
                       doesn't appear here at all (it's still on the detail page). */}
-                  <div className="min-w-24 shrink-0 border-l pl-3 text-right">
+                  <div className="min-w-24 shrink-0 text-right">
                     {paid ? (
                       <span className="font-semibold text-blue-700 dark:text-blue-400">
                         Lunas
