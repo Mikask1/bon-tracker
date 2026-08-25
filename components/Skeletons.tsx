@@ -10,9 +10,9 @@ function InvoiceRowSkeleton() {
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-3 w-44" />
       </div>
-      <div className="flex min-w-28 shrink-0 flex-col items-end gap-2 border-l pl-3">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-3 w-12" />
+      <div className="flex min-w-32 shrink-0 flex-col items-end gap-2 border-l pl-3">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-4 w-24" />
       </div>
     </div>
   );

@@ -344,11 +344,18 @@ export function InvoiceList() {
             their own right-aligned column so they can be compared down the page. */}
         {groups.map((g) => (
           <section key={g.key}>
-            <div className="flex items-baseline justify-between gap-2 px-4 pb-1 pt-5">
+            <div className="flex items-start justify-between gap-2 px-4 pb-1 pt-5">
               <h2 className="font-semibold">{formatDayHeading(g.date)}</h2>
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {g.rows.length} bon · {formatRupiah(g.total)}
-              </span>
+              <div className="shrink-0 pt-0.5 text-right">
+                <p className="text-xs tabular-nums text-muted-foreground">
+                  {g.rows.length} bon · {formatRupiah(g.total)}
+                </p>
+                {g.outstanding > 0 && (
+                  <p className="text-xs font-semibold tabular-nums text-destructive">
+                    sisa {formatRupiah(g.outstanding)}
+                  </p>
+                )}
+              </div>
             </div>
 
             {g.rows.map((r) => {
@@ -363,11 +370,11 @@ export function InvoiceList() {
                   className="relative ml-4 flex items-center gap-3 border-t py-3 pr-4 active:bg-muted/50"
                 >
                   {/* Status spine. Length and position carry the state as well as
-                      hue does, so it survives red/green colour deficiency. */}
+                      hue does, so it survives colour deficiency. */}
                   <span
                     aria-hidden
                     className={`absolute inset-y-0 -left-4 w-1 ${
-                      paid ? 'bg-emerald-600' : 'bg-destructive'
+                      paid ? 'bg-blue-600' : 'bg-destructive'
                     }`}
                   />
 
@@ -390,23 +397,34 @@ export function InvoiceList() {
                     )}
                   </div>
 
-                  <div className="flex min-w-28 shrink-0 flex-col items-end border-l pl-3">
-                    <span className="font-semibold tabular-nums">
-                      {formatRupiah(r.grandTotal)}
-                    </span>
-                    <span
-                      className={`text-xs font-semibold tabular-nums ${
-                        paid
-                          ? 'text-emerald-700 dark:text-emerald-400'
-                          : 'text-destructive'
-                      }`}
-                    >
-                      {paid
-                        ? 'Lunas'
-                        : partial
-                          ? `Sisa ${formatRupiah(r.unpaidAmount)}`
-                          : 'Belum'}
-                    </span>
+                  {/* Whether it is paid, and how much is still owed — that is what
+                      this column is for. The grand total is the supporting
+                      figure, so it is set small and muted underneath. */}
+                  <div className="flex min-w-32 shrink-0 flex-col items-end border-l pl-3 text-right">
+                    {paid ? (
+                      <>
+                        <span className="font-semibold text-blue-700 dark:text-blue-400">
+                          Lunas
+                        </span>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {formatRupiah(r.grandTotal)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs font-semibold text-destructive">
+                          Belum Lunas
+                        </span>
+                        <span className="font-semibold tabular-nums text-destructive">
+                          Sisa {formatRupiah(r.unpaidAmount)}
+                        </span>
+                        {partial && (
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            dari {formatRupiah(r.grandTotal)}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </Link>
               );

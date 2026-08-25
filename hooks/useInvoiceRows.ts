@@ -60,6 +60,7 @@ export interface DayGroup {
   date: Date;
   rows: InvoiceRow[];
   total: number;
+  outstanding: number; // still owed across this day's bons
 }
 
 // Group rows under one heading per day, newest day first. Rows are sorted here
@@ -80,12 +81,13 @@ export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
     const key = toYMD(r.invoiceCreatedAt);
     let g = byKey.get(key);
     if (!g) {
-      g = { key, date: r.invoiceCreatedAt, rows: [], total: 0 };
+      g = { key, date: r.invoiceCreatedAt, rows: [], total: 0, outstanding: 0 };
       byKey.set(key, g);
       groups.push(g);
     }
     g.rows.push(r);
     g.total += r.grandTotal;
+    if (r.status === 'BELUM_LUNAS') g.outstanding += r.unpaidAmount;
   }
   return groups;
 }
