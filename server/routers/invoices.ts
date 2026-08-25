@@ -45,7 +45,6 @@ const listInput = z.object({
   status: z.enum(['ALL', 'LUNAS', 'BELUM_LUNAS']).default('ALL'),
   dateFrom: z.string().optional(), // yyyy-mm-dd
   dateTo: z.string().optional(),
-  sort: z.enum(['asc', 'desc']).default('desc'),
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(100).default(15),
 });
@@ -79,7 +78,7 @@ export const invoicesRouter = router({
     const [total, docs] = await Promise.all([
       Invoice.countDocuments(filter),
       Invoice.find(filter)
-        .sort({ createdAt: input.sort === 'desc' ? -1 : 1 })
+        .sort({ invoiceCreatedAt: -1 })
         .skip((input.page - 1) * input.limit)
         .limit(input.limit)
         .lean(),
