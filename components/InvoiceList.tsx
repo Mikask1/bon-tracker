@@ -38,7 +38,6 @@ import {
 import {
   Plus,
   Search,
-  ArrowDownUp,
   ImageIcon,
   SlidersHorizontal,
   Camera,
@@ -155,12 +154,11 @@ export function InvoiceList() {
   const [status, setStatus] = useState<'ALL' | Status>('ALL');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [desc, setDesc] = useState(true);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const dq = useDebounced(q);
 
-  const filtersActive = status !== 'ALL' || !!from || !!to || !desc;
+  const filtersActive = status !== 'ALL' || !!from || !!to;
 
   const list = trpc.invoices.list.useQuery(
     {
@@ -168,7 +166,6 @@ export function InvoiceList() {
       status,
       dateFrom: from || undefined,
       dateTo: to || undefined,
-      sort: desc ? 'desc' : 'asc',
       page,
       limit: PAGE_SIZE,
     },
@@ -228,7 +225,7 @@ export function InvoiceList() {
             size="icon"
             className="relative shrink-0"
             onClick={() => setShowFilters((v) => !v)}
-            aria-label="Filter & urutkan"
+            aria-label="Filter"
           >
             <SlidersHorizontal />
             {filtersActive && (
@@ -256,18 +253,6 @@ export function InvoiceList() {
                   <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  setDesc((d) => !d);
-                  resetPage();
-                }}
-                aria-label="Urutkan tanggal"
-                title={desc ? 'Terbaru dulu' : 'Terlama dulu'}
-              >
-                <ArrowDownUp className={desc ? '' : 'rotate-180'} />
-              </Button>
             </div>
 
             <div className="flex items-center gap-2 text-sm">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
 import { useScanJobStore } from '@/store/scanJobStore';
@@ -66,6 +67,7 @@ export function InvoiceForm({
   onSaved?: () => void;
 }) {
   const isEdit = !!initial;
+  const router = useRouter();
   const enqueue = usePendingStore((s) => s.enqueue);
   const removeJob = useScanJobStore((s) => s.remove);
   const job = useScanJobStore((s) => (jobId ? s.jobs[jobId] : undefined));
@@ -260,13 +262,18 @@ export function InvoiceForm({
 
     enqueue(parsed.data);
     if (job) removeJob(job.localId);
-    toast.success(
-      isEdit
-        ? 'Draf diperbarui'
-        : online
-          ? 'Bon disimpan'
-          : 'Tersimpan — akan sinkron saat online'
-    );
+    if (isEdit) {
+      toast.success('Draf diperbarui');
+    } else {
+      const localId = payload.localId;
+      toast.success(online ? 'Bon disimpan' : 'Tersimpan — akan sinkron saat online', {
+        duration: 5000,
+        action: {
+          label: 'Lihat',
+          onClick: () => router.push(`/invoice/${localId}`),
+        },
+      });
+    }
     onOpenChange(false);
     onSaved?.();
   }
