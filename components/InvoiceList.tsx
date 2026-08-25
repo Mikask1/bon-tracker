@@ -25,13 +25,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { InvoiceListSkeleton } from '@/components/Skeletons';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Drawer,
   DrawerContent,
   DrawerHeader,
@@ -151,14 +144,26 @@ export function InvoiceList() {
   }, []);
 
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<'ALL' | Status>('ALL');
+  // Both statuses checked, or neither, both mean "no restriction" — only picking
+  // exactly one actually narrows the list. Unlike a bon's own status (edited as an
+  // either/or choice on the detail page), this filter can be both, one, or none.
+  const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const dq = useDebounced(q);
 
-  const filtersActive = status !== 'ALL' || !!from || !!to;
+  const status: 'ALL' | Status =
+    selectedStatuses.length === 1 ? selectedStatuses[0] : 'ALL';
+  const filtersActive = selectedStatuses.length === 1 || !!from || !!to;
+
+  function toggleStatus(s: Status) {
+    setSelectedStatuses((cur) =>
+      cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]
+    );
+    resetPage();
+  }
 
   const list = trpc.invoices.list.useQuery(
     {
@@ -210,9 +215,9 @@ export function InvoiceList() {
       <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="pl-8"
+              className="h-12 border-2 pl-10 text-base"
               placeholder="Cari pembeli, alamat, barang, ID…"
               value={q}
               onChange={(e) => {
@@ -223,60 +228,92 @@ export function InvoiceList() {
           </div>
           <Button
             variant={showFilters ? 'secondary' : 'outline'}
-            size="icon"
-            className="relative shrink-0"
+            className="relative h-12 w-14 shrink-0 flex-col gap-0.5 px-1 py-1"
             onClick={() => setShowFilters((v) => !v)}
             aria-label="Filter"
           >
-            <SlidersHorizontal />
+            <SlidersHorizontal className="size-5" />
+            <span className="text-[11px] font-medium leading-none">Filter</span>
             {filtersActive && (
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-primary ring-2 ring-background" />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             )}
           </Button>
           <SettingsButton />
         </div>
 
         {showFilters && (
-          <div className="flex flex-col gap-2 pt-1">
+          <div className="flex flex-col gap-3 pt-1">
+            {/* Independent toggles, not a single-choice picker: Lunas and Belum
+                Lunas can both be on, both off, or just one — either way narrows
+                to what's actually picked (both/neither = no restriction). */}
             <div className="flex gap-2">
-              <Select
-                value={status}
-                onValueChange={(v) => {
-                  setStatus(v as 'ALL' | Status);
-                  resetPage();
-                }}
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedStatuses.includes('LUNAS')}
+                onClick={() => toggleStatus('LUNAS')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedStatuses.includes('LUNAS')
+                    ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
+                    : '')
+                }
               >
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Semua status</SelectItem>
-                  <SelectItem value="LUNAS">Lunas</SelectItem>
-                  <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
-                </SelectContent>
-              </Select>
+                Lunas
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedStatuses.includes('BELUM_LUNAS')}
+                onClick={() => toggleStatus('BELUM_LUNAS')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedStatuses.includes('BELUM_LUNAS')
+                    ? 'border-destructive bg-destructive text-white hover:bg-destructive hover:text-white'
+                    : '')
+                }
+              >
+                Belum Lunas
+              </Button>
             </div>
 
-            <div className="flex items-center gap-2 text-sm">
-              <Input
-                type="date"
-                className="flex-1"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  resetPage();
-                }}
-              />
-              <span className="text-muted-foreground">—</span>
-              <Input
-                type="date"
-                className="flex-1"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  resetPage();
-                }}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="filter-date-from"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Dari tanggal
+                </label>
+                <Input
+                  id="filter-date-from"
+                  type="date"
+                  className="h-11"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    resetPage();
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="filter-date-to"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Sampai tanggal
+                </label>
+                <Input
+                  id="filter-date-to"
+                  type="date"
+                  className="h-11"
+                  value={to}
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    resetPage();
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -352,7 +389,7 @@ export function InvoiceList() {
                 <Link
                   key={r.localId}
                   href={`/invoice/${r.localId}`}
-                  className="relative ml-4 flex items-center gap-3 border-t py-3 pr-4 active:bg-muted/50"
+                  className="relative ml-4 flex items-center gap-3 border-t py-3 pl-3 pr-4 active:bg-muted/50"
                 >
                   {/* Status spine. Length and position carry the state as well as
                       hue does, so it survives colour deficiency. */}
@@ -363,7 +400,14 @@ export function InvoiceList() {
                     }`}
                   />
 
-                  <div className="min-w-0 flex-1 pl-3">
+                  {/* Small square of the nota itself — the strongest recognition cue
+                      for a bon the owner was present for. Requested at 2× so it stays
+                      sharp on a retina screen. */}
+                  <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <InvoiceThumb src={r.imageUrl} size={80} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{r.buyer.name || '—'}</p>
                     {summary && (
                       <p className="truncate text-sm text-muted-foreground">

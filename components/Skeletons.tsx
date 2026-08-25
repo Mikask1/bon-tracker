@@ -4,9 +4,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 // (status spine + buyer/items text + right-aligned amount column).
 function InvoiceRowSkeleton() {
   return (
-    <div className="relative ml-4 flex items-center gap-3 border-t py-3 pr-4">
+    <div className="relative ml-4 flex items-center gap-3 border-t py-3 pl-3 pr-4">
       <span className="absolute inset-y-0 -left-4 w-1 bg-muted" />
-      <div className="min-w-0 flex-1 space-y-2 pl-3">
+      <Skeleton className="size-10 shrink-0 rounded-md" />
+      <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-3 w-44" />
       </div>
