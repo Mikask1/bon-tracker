@@ -49,9 +49,9 @@ const PAGE_SIZE = 15;
 
 // One end of the date range. The real <input type="date"> is kept — it opens the
 // OS picker, which beats any in-page calendar on a phone — but sits invisible on
-// top of a face we control, so an unset field can say "Awal" instead of rendering
-// the browser's dd/mm/yyyy. Empty still means no restriction; nothing is
-// pre-filtered on open.
+// top of a face we control, so an unset field can name itself instead of
+// rendering the browser's dd/mm/yyyy. Empty still means no restriction; nothing
+// is pre-filtered on open.
 function DateField({
   value,
   onChange,
@@ -325,12 +325,12 @@ export function InvoiceList() {
               </Button>
             </div>
 
-            {/* Unset reads as "Awal — Sekarang": the no-filter state is named on
-                screen instead of implied by two blank boxes. */}
+            {/* Unset reads as "Tanggal Awal — Tanggal Akhir": the no-filter state
+                is named on screen instead of implied by two blank boxes. */}
             <div className="flex items-center gap-2">
               <DateField
-                label="Dari tanggal"
-                placeholder="Awal"
+                label="Tanggal awal"
+                placeholder="Tanggal Awal"
                 value={from}
                 onChange={(v) => {
                   setFrom(v);
@@ -339,8 +339,8 @@ export function InvoiceList() {
               />
               <span className="shrink-0 text-muted-foreground">—</span>
               <DateField
-                label="Sampai tanggal"
-                placeholder="Sekarang"
+                label="Tanggal akhir"
+                placeholder="Tanggal Akhir"
                 value={to}
                 onChange={(v) => {
                   setTo(v);
