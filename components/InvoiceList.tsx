@@ -42,10 +42,54 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { formatRupiah, formatDayHeading } from '@/lib/format';
+import { formatRupiah, formatDayHeading, formatShortDate } from '@/lib/format';
 import type { Status } from '@/types/invoice';
 
 const PAGE_SIZE = 15;
+
+// One end of the date range. The real <input type="date"> is kept — it opens the
+// OS picker, which beats any in-page calendar on a phone — but sits invisible on
+// top of a face we control, so an unset field can say "Awal" instead of rendering
+// the browser's dd/mm/yyyy. Empty still means no restriction; nothing is
+// pre-filtered on open.
+function DateField({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <div className="flex h-11 items-center justify-center rounded-md border px-2">
+        <span className={`truncate ${value ? '' : 'text-muted-foreground'}`}>
+          {value ? formatShortDate(value) : placeholder}
+        </span>
+      </div>
+      <input
+        type="date"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label={`Hapus ${label}`}
+          onClick={() => onChange('')}
+          className="absolute right-1 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function useDebounced<T>(value: T, ms = 300): T {
   const [v, setV] = useState(value);
@@ -281,28 +325,25 @@ export function InvoiceList() {
               </Button>
             </div>
 
-            {/* min-w-0 is load-bearing: a native date input's min-content width
-                won't shrink, so without it the two boxes overflow the row and
-                collide. The em-dash carries "range" without needing labels. */}
+            {/* Unset reads as "Awal — Sekarang": the no-filter state is named on
+                screen instead of implied by two blank boxes. */}
             <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                aria-label="Dari tanggal"
-                className="h-11 min-w-0 flex-1"
+              <DateField
+                label="Dari tanggal"
+                placeholder="Awal"
                 value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
+                onChange={(v) => {
+                  setFrom(v);
                   resetPage();
                 }}
               />
               <span className="shrink-0 text-muted-foreground">—</span>
-              <Input
-                type="date"
-                aria-label="Sampai tanggal"
-                className="h-11 min-w-0 flex-1"
+              <DateField
+                label="Sampai tanggal"
+                placeholder="Sekarang"
                 value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
+                onChange={(v) => {
+                  setTo(v);
                   resetPage();
                 }}
               />
