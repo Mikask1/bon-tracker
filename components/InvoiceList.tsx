@@ -286,7 +286,6 @@ export function InvoiceList() {
               <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             )}
           </Button>
-          <SettingsButton />
         </div>
 
         {showFilters && (
@@ -510,14 +509,16 @@ export function InvoiceList() {
         )}
       </div>
 
-      {/* Bottom bar: one full-width, labelled primary action. Settings moved up to
-          the header, so nothing else competes with it down here. */}
+      {/* Bottom bar: the primary action, with settings parked to its left. Settings
+          is icon-only and unlabelled next to a wide labelled button, so the two
+          never compete — and it keeps the header down to search and filter. */}
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
-        <div className="mx-auto max-w-2xl">
+        <div className="mx-auto flex max-w-2xl items-center gap-2">
+          <SettingsButton />
           <Button
             size="lg"
             onClick={() => setChooser(true)}
-            className="h-14 w-full text-base font-bold"
+            className="h-14 flex-1 text-base font-bold"
           >
             <Plus className="size-5" /> Bon Baru
           </Button>
