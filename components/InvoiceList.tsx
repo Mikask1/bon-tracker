@@ -325,12 +325,12 @@ export function InvoiceList() {
               </Button>
             </div>
 
-            {/* Unset reads as "Tanggal Awal — Tanggal Akhir": the no-filter state
-                is named on screen instead of implied by two blank boxes. */}
+            {/* Unset reads as "TGL AWAL — TGL AKHIR": the no-filter state is named
+                on screen instead of implied by two blank boxes. */}
             <div className="flex items-center gap-2">
               <DateField
                 label="Tanggal awal"
-                placeholder="Tanggal Awal"
+                placeholder="TGL AWAL"
                 value={from}
                 onChange={(v) => {
                   setFrom(v);
@@ -340,7 +340,7 @@ export function InvoiceList() {
               <span className="shrink-0 text-muted-foreground">—</span>
               <DateField
                 label="Tanggal akhir"
-                placeholder="Tanggal Akhir"
+                placeholder="TGL AKHIR"
                 value={to}
                 onChange={(v) => {
                   setTo(v);
