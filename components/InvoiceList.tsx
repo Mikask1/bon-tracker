@@ -233,12 +233,11 @@ export function InvoiceList() {
           </div>
           <Button
             variant={showFilters ? 'secondary' : 'outline'}
-            className="relative h-12 w-14 shrink-0 flex-col gap-0.5 px-1 py-1"
+            className="relative size-12 shrink-0"
             onClick={() => setShowFilters((v) => !v)}
             aria-label="Filter"
           >
             <SlidersHorizontal className="size-5" />
-            <span className="text-[11px] font-medium leading-none">Filter</span>
             {filtersActive && (
               <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             )}

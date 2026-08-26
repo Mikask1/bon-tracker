@@ -15,19 +15,12 @@ export function FontScaleApplier() {
   return null;
 }
 
-// Header entry point to the settings page. Icon carries a printed word rather
-// than relying on the glyph alone, and the target is sized above the 44px floor.
+// Header entry point to the settings page. Sized above the 44px touch floor.
 export function SettingsButton() {
   return (
-    <Button
-      asChild
-      variant="outline"
-      aria-label="Pengaturan"
-      className="h-12 w-14 flex-col gap-0.5 px-1 py-1"
-    >
+    <Button asChild variant="outline" aria-label="Pengaturan" className="size-12">
       <Link href="/settings">
         <Settings className="size-5" />
-        <span className="text-[11px] font-medium leading-none">Atur</span>
       </Link>
     </Button>
   );
