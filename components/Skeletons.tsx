@@ -1,30 +1,43 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Placeholder for one invoice row — mirrors the real row in InvoiceList
-// (56px thumbnail + stacked buyer text + right-aligned amount/badge).
+// Placeholder for one ledger entry — mirrors the real entry in InvoiceList
+// (status spine + buyer/items text + right-aligned amount column).
 function InvoiceRowSkeleton() {
   return (
-    <div className="flex items-start gap-3 p-4">
-      <Skeleton className="size-14 shrink-0" />
-      <div className="min-w-0 flex-1 space-y-2 py-0.5">
-        <Skeleton className="h-3 w-16" />
+    <div className="relative ml-4 flex items-center gap-3 border-t py-3 pl-3 pr-4">
+      <span className="absolute inset-y-0 -left-4 w-1 bg-muted" />
+      <Skeleton className="size-10 shrink-0 rounded-md" />
+      <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-3 w-44" />
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-2">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-5 w-16 rounded-full" />
+      <div className="min-w-24 shrink-0">
+        <Skeleton className="ml-auto h-4 w-20" />
       </div>
     </div>
   );
 }
 
-// List loading state — rows inherit the list container's divide-y separators.
-export function InvoiceListSkeleton({ rows = 6 }: { rows?: number }) {
+// List loading state — day headings with entries under them, so the skeleton
+// has the same silhouette as the ledger it is standing in for.
+export function InvoiceListSkeleton({
+  days = 2,
+  perDay = 3,
+}: {
+  days?: number;
+  perDay?: number;
+}) {
   return (
     <>
-      {Array.from({ length: rows }, (_, i) => (
-        <InvoiceRowSkeleton key={i} />
+      {Array.from({ length: days }, (_, d) => (
+        <section key={d}>
+          <div className="px-4 pb-1 pt-5">
+            <Skeleton className="h-5 w-40" />
+          </div>
+          {Array.from({ length: perDay }, (_, i) => (
+            <InvoiceRowSkeleton key={i} />
+          ))}
+        </section>
       ))}
     </>
   );

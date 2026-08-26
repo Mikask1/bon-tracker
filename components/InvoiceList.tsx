@@ -5,7 +5,13 @@ import Link from 'next/link';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
-import { serverToRow, pendingToRow, matchesFilters } from '@/hooks/useInvoiceRows';
+import {
+  serverToRow,
+  pendingToRow,
+  matchesFilters,
+  groupByDay,
+  itemSummary,
+} from '@/hooks/useInvoiceRows';
 import { InvoiceThumb } from '@/components/InvoiceThumb';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
@@ -18,13 +24,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { InvoiceListSkeleton } from '@/components/Skeletons';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Drawer,
   DrawerContent,
@@ -43,10 +42,54 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { formatRupiah } from '@/lib/format';
+import { formatRupiah, formatDayHeading, formatShortDate } from '@/lib/format';
 import type { Status } from '@/types/invoice';
 
 const PAGE_SIZE = 15;
+
+// One end of the date range. The real <input type="date"> is kept — it opens the
+// OS picker, which beats any in-page calendar on a phone — but sits invisible on
+// top of a face we control, so an unset field can name itself instead of
+// rendering the browser's dd/mm/yyyy. Empty still means no restriction; nothing
+// is pre-filtered on open.
+function DateField({
+  value,
+  onChange,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  label: string;
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <div className="flex h-11 items-center justify-center rounded-md border px-2">
+        <span className={`truncate ${value ? '' : 'text-muted-foreground'}`}>
+          {value ? formatShortDate(value) : placeholder}
+        </span>
+      </div>
+      <input
+        type="date"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label={`Hapus ${label}`}
+          onClick={() => onChange('')}
+          className="absolute right-1 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground active:bg-muted"
+        >
+          <X className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function useDebounced<T>(value: T, ms = 300): T {
   const [v, setV] = useState(value);
@@ -145,14 +188,26 @@ export function InvoiceList() {
   }, []);
 
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<'ALL' | Status>('ALL');
+  // Both statuses checked, or neither, both mean "no restriction" — only picking
+  // exactly one actually narrows the list. Unlike a bon's own status (edited as an
+  // either/or choice on the detail page), this filter can be both, one, or none.
+  const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const dq = useDebounced(q);
 
-  const filtersActive = status !== 'ALL' || !!from || !!to;
+  const status: 'ALL' | Status =
+    selectedStatuses.length === 1 ? selectedStatuses[0] : 'ALL';
+  const filtersActive = selectedStatuses.length === 1 || !!from || !!to;
+
+  function toggleStatus(s: Status) {
+    setSelectedStatuses((cur) =>
+      cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]
+    );
+    resetPage();
+  }
 
   const list = trpc.invoices.list.useQuery(
     {
@@ -191,6 +246,12 @@ export function InvoiceList() {
   const jobRows = Object.values(jobsMap).filter((j) => !savedIds.has(j.localId));
 
   const rows = [...pendingRows, ...serverRows];
+  const groups = groupByDay(rows);
+  // keepPreviousData holds the old rows on screen while a new query runs, so
+  // changing a filter looks like it did nothing. Fall back to the skeleton
+  // whenever what's displayed no longer answers the active filters.
+  const showSkeleton =
+    list.isLoading || (list.isFetching && list.isPlaceholderData);
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const end = Math.min(page * PAGE_SIZE, total);
 
@@ -203,9 +264,9 @@ export function InvoiceList() {
       <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="pl-8"
+              className="h-12 border-2 pl-10 text-base"
               placeholder="Cari pembeli, alamat, barang, ID…"
               value={q}
               onChange={(e) => {
@@ -216,56 +277,73 @@ export function InvoiceList() {
           </div>
           <Button
             variant={showFilters ? 'secondary' : 'outline'}
-            size="icon"
-            className="relative shrink-0"
+            className="relative size-12 shrink-0"
             onClick={() => setShowFilters((v) => !v)}
             aria-label="Filter"
           >
-            <SlidersHorizontal />
+            <SlidersHorizontal className="size-5" />
             {filtersActive && (
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-primary ring-2 ring-background" />
+              <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" />
             )}
           </Button>
+          <SettingsButton />
         </div>
 
         {showFilters && (
-          <div className="flex flex-col gap-2 pt-1">
+          <div className="flex flex-col gap-3 pt-1">
+            {/* Independent toggles, not a single-choice picker: Lunas and Belum
+                Lunas can both be on, both off, or just one — either way narrows
+                to what's actually picked (both/neither = no restriction). */}
             <div className="flex gap-2">
-              <Select
-                value={status}
-                onValueChange={(v) => {
-                  setStatus(v as 'ALL' | Status);
-                  resetPage();
-                }}
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedStatuses.includes('LUNAS')}
+                onClick={() => toggleStatus('LUNAS')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedStatuses.includes('LUNAS')
+                    ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
+                    : '')
+                }
               >
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Semua status</SelectItem>
-                  <SelectItem value="LUNAS">Lunas</SelectItem>
-                  <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
-                </SelectContent>
-              </Select>
+                Lunas
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedStatuses.includes('BELUM_LUNAS')}
+                onClick={() => toggleStatus('BELUM_LUNAS')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedStatuses.includes('BELUM_LUNAS')
+                    ? 'border-destructive bg-destructive text-white hover:bg-destructive hover:text-white'
+                    : '')
+                }
+              >
+                Belum Lunas
+              </Button>
             </div>
 
-            <div className="flex items-center gap-2 text-sm">
-              <Input
-                type="date"
-                className="flex-1"
+            {/* Unset reads as "TGL AWAL — TGL AKHIR": the no-filter state is named
+                on screen instead of implied by two blank boxes. */}
+            <div className="flex items-center gap-2">
+              <DateField
+                label="Tanggal awal"
+                placeholder="TGL AWAL"
                 value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
+                onChange={(v) => {
+                  setFrom(v);
                   resetPage();
                 }}
               />
-              <span className="text-muted-foreground">—</span>
-              <Input
-                type="date"
-                className="flex-1"
+              <span className="shrink-0 text-muted-foreground">—</span>
+              <DateField
+                label="Tanggal akhir"
+                placeholder="TGL AKHIR"
                 value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
+                onChange={(v) => {
+                  setTo(v);
                   resetPage();
                 }}
               />
@@ -274,12 +352,12 @@ export function InvoiceList() {
         )}
       </header>
 
-      <div className="flex flex-col divide-y pb-28">
-        {list.isLoading && <InvoiceListSkeleton />}
-
-        {/* active scan jobs */}
+      <div className="flex flex-col pb-28">
+        {/* active scan jobs — pinned above the ledger; they aren't bons yet, so they
+            have no invoice date to file under a day heading. Local state, so they
+            stay put while the server list reloads. */}
         {jobRows.map((j) => (
-          <div key={j.localId} className="flex items-center gap-3 p-4">
+          <div key={j.localId} className="flex items-center gap-3 border-b p-4">
             <button
               onClick={() => router.push(`/invoice/new/${j.localId}`)}
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -322,7 +400,9 @@ export function InvoiceList() {
           </div>
         ))}
 
-        {!list.isLoading && rows.length === 0 && jobRows.length === 0 && (
+        {showSkeleton && <InvoiceListSkeleton />}
+
+        {!showSkeleton && rows.length === 0 && jobRows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
             {total === 0 && !dq && status === 'ALL' && !from && !to
               ? 'Belum ada bon. Tekan tombol + untuk menambah.'
@@ -330,67 +410,79 @@ export function InvoiceList() {
           </p>
         )}
 
-        {rows.map((r) => (
-          <Link
-            key={r.localId}
-            href={`/invoice/${r.localId}`}
-            className="flex items-start gap-3 p-4 active:bg-muted/50"
-          >
-            <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-              <InvoiceThumb src={r.imageUrl} size={112} />
-            </div>
+        {/* The ledger: one heading per day, entries ruled underneath it. The date is
+            printed once per group instead of once per row. */}
+        {!showSkeleton &&
+          groups.map((g) => (
+          <section key={g.key}>
+            <h2 className="px-4 pb-1 pt-5 font-semibold">{formatDayHeading(g.date)}</h2>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {r.invoiceId?.toUpperCase() ?? 'Draf'}
-                </span>
-                {r.sync === 'pending' && (
-                  <Badge variant="secondary" className="text-[0.625rem]">
-                    Menunggu sinkron
-                  </Badge>
-                )}
-                {r.sync === 'error' && (
-                  <Badge variant="destructive" className="text-[0.625rem]">
-                    Gagal sinkron
-                  </Badge>
-                )}
-              </div>
-              <p className="truncate font-medium">{r.buyer.name || '—'}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                {r.buyer.address}
-              </p>
-              {r.buyer.phoneNumber && (
-                <p className="truncate text-sm text-muted-foreground">
-                  {r.buyer.phoneNumber}
-                </p>
-              )}
-            </div>
+            {g.rows.map((r) => {
+              const paid = r.status === 'LUNAS';
+              const summary = itemSummary(r.items);
+              return (
+                <Link
+                  key={r.localId}
+                  href={`/invoice/${r.localId}`}
+                  className="relative ml-4 flex items-center gap-3 border-t py-3 pl-3 pr-4 active:bg-muted/50"
+                >
+                  {/* Status spine. Length and position carry the state as well as
+                      hue does, so it survives colour deficiency. */}
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 -left-4 w-1 ${
+                      paid ? 'bg-blue-600' : 'bg-destructive'
+                    }`}
+                  />
 
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {r.status === 'LUNAS' ? (
-                <Badge className="bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-600">
-                  Lunas
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="px-3 py-1 text-sm">
-                  Belum Lunas
-                </Badge>
-              )}
-              {r.status === 'BELUM_LUNAS' && (
-                <span className="text-sm font-semibold text-destructive">
-                  Sisa {formatRupiah(r.unpaidAmount)}
-                </span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {formatRupiah(r.grandTotal)}
-              </span>
-            </div>
-          </Link>
+                  {/* Small square of the nota itself — the strongest recognition cue
+                      for a bon the owner was present for. Requested at 2× so it stays
+                      sharp on a retina screen. */}
+                  <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <InvoiceThumb src={r.imageUrl} size={80} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{r.buyer.name || '—'}</p>
+                    {summary && (
+                      <p className="truncate text-sm text-muted-foreground">
+                        {summary}
+                      </p>
+                    )}
+                    {r.sync === 'pending' && (
+                      <Badge variant="secondary" className="mt-1">
+                        Menunggu sinkron
+                      </Badge>
+                    )}
+                    {r.sync === 'error' && (
+                      <Badge variant="destructive" className="mt-1">
+                        Gagal sinkron
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Whether it is paid, and how much is still owed — nothing else.
+                      The grand total isn't the question a bon list answers, so it
+                      doesn't appear here at all (it's still on the detail page). */}
+                  <div className="min-w-24 shrink-0 text-right">
+                    {paid ? (
+                      <span className="font-semibold text-blue-700 dark:text-blue-400">
+                        Lunas
+                      </span>
+                    ) : (
+                      <span className="font-semibold tabular-nums text-destructive">
+                        Sisa {formatRupiah(r.unpaidAmount)}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </section>
         ))}
 
-        {total > 0 && (
-          <div className="flex items-center justify-between p-4 text-sm">
+        {total > 0 && !showSkeleton && (
+          <div className="flex items-center justify-between border-t p-4 text-sm">
             <span className="text-muted-foreground">
               {start}–{end} dari {total}
             </span>
@@ -418,19 +510,16 @@ export function InvoiceList() {
         )}
       </div>
 
-      {/* bottom app bar with a seated + action */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-        <div className="relative mx-auto h-20 max-w-2xl">
-          <div className="absolute left-[max(1rem,env(safe-area-inset-left))] top-3">
-            <SettingsButton />
-          </div>
+      {/* Bottom bar: one full-width, labelled primary action. Settings moved up to
+          the header, so nothing else competes with it down here. */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
+        <div className="mx-auto max-w-2xl">
           <Button
-            size="icon"
+            size="lg"
             onClick={() => setChooser(true)}
-            aria-label="Bon baru"
-            className="absolute left-1/2 top-0 h-16 w-16 -translate-x-1/2 -translate-y-1/3 rounded-full shadow-lg"
+            className="h-14 w-full text-base font-bold"
           >
-            <Plus className="size-7" />
+            <Plus className="size-5" /> Bon Baru
           </Button>
         </div>
       </nav>

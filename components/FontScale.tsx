@@ -15,10 +15,10 @@ export function FontScaleApplier() {
   return null;
 }
 
-// Bottom-bar entry point to the settings page.
+// Header entry point to the settings page. Sized above the 44px touch floor.
 export function SettingsButton() {
   return (
-    <Button asChild variant="ghost" size="icon" aria-label="Pengaturan">
+    <Button asChild variant="outline" aria-label="Pengaturan" className="size-12">
       <Link href="/settings">
         <Settings className="size-5" />
       </Link>
