@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { getQueryKey } from '@trpc/react-query';
 import { Image } from '@imagekit/next';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
@@ -18,6 +20,7 @@ import {
   invoiceInputSchema,
   type Status,
   type DeliveryStatus,
+  type Invoice,
 } from '@/types/invoice';
 import { formatRupiah } from '@/lib/format';
 
@@ -56,6 +59,7 @@ export function InvoiceForm({
   const removeJob = useScanJobStore((s) => s.remove);
   const job = useScanJobStore((s) => (jobId ? s.jobs[jobId] : undefined));
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
   const update = trpc.invoices.update.useMutation();
 
   const busy = uploading || job?.status === 'scanning';
@@ -73,7 +77,6 @@ export function InvoiceForm({
   // Nota total to reconcile summed items against (create only). Seeded from the scan,
   // but editable so a misread total can be corrected. Empty = no check. Never persisted.
   const [totalStr, setTotalStr] = useState('');
-  const [saving, setSaving] = useState(false);
   const [online, setOnline] = useState(true);
   const populatedRef = useRef(false);
 
@@ -188,7 +191,7 @@ export function InvoiceForm({
     setRows((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
 
-  async function save() {
+  function save() {
     if (!reconciled) {
       toast.error(
         `Total item ${formatRupiah(grandTotal)} ≠ total nota ${formatRupiah(targetTotal!)} (selisih ${formatRupiah(Math.abs(totalDiff))}). Perbaiki dulu.`
@@ -220,22 +223,58 @@ export function InvoiceForm({
     }
 
     if (isEdit && initial!.sync === 'synced') {
-      setSaving(true);
-      try {
-        await update.mutateAsync(parsed.data);
-        await Promise.all([
-          utils.invoices.list.invalidate(),
-          utils.invoices.getByLocalId.invalidate({ localId: payload.localId }),
-        ]);
-        toast.success('Bon diperbarui');
-        onDone();
-      } catch (e) {
-        toast.error(
-          online ? (e instanceof Error ? e.message : 'Gagal memperbarui') : 'Edit perlu online'
-        );
-      } finally {
-        setSaving(false);
-      }
+      const localId = payload.localId;
+      // Optimistic: patch the cached detail + every cached list page immediately,
+      // fire the mutation in the background, and only surface a toast + resync
+      // if it actually fails — the save shouldn't make the user wait on the
+      // network round trip.
+      const optimisticInvoice: Invoice = {
+        invoiceId: initial!.invoiceId ?? '',
+        localId,
+        buyer: payload.buyer,
+        items,
+        grandTotal,
+        status,
+        unpaidAmount,
+        deliveryStatus,
+        imageUrl: payload.imageUrl,
+        imageHash: payload.imageHash,
+        invoiceCreatedAt: payload.invoiceCreatedAt,
+        createdAt: payload.createdAt,
+        updatedAt: new Date(),
+      };
+      utils.invoices.getByLocalId.setData({ localId }, optimisticInvoice);
+      queryClient.setQueriesData<{
+        rows: Invoice[];
+        total: number;
+        page: number;
+        limit: number;
+      }>({ queryKey: getQueryKey(trpc.invoices.list) }, (old) =>
+        old
+          ? {
+              ...old,
+              rows: old.rows.map((r) =>
+                r.localId === localId ? optimisticInvoice : r
+              ),
+            }
+          : old
+      );
+
+      update.mutate(parsed.data, {
+        onError: (e) => {
+          toast.error(
+            online ? (e instanceof Error ? e.message : 'Gagal memperbarui') : 'Edit perlu online'
+          );
+          utils.invoices.getByLocalId.invalidate({ localId });
+          utils.invoices.list.invalidate();
+        },
+        onSuccess: () => {
+          utils.invoices.getByLocalId.invalidate({ localId });
+          utils.invoices.list.invalidate();
+        },
+      });
+      toast.success('Bon diperbarui');
+      onDone();
       return;
     }
 
@@ -466,7 +505,7 @@ export function InvoiceForm({
                     className={
                       'h-11 flex-1 text-base font-semibold ' +
                       (deliveryStatus === 'DIKIRIM'
-                        ? 'border-amber-200 bg-amber-200 text-amber-900 hover:bg-amber-200 hover:text-amber-900'
+                        ? 'border-yellow-200 bg-yellow-200 text-yellow-900 hover:bg-yellow-200 hover:text-yellow-900'
                         : '')
                     }
                   >
@@ -491,8 +530,8 @@ export function InvoiceForm({
             </div>
 
             <div className="sticky bottom-0 border-t bg-background p-4">
-              <Button onClick={save} disabled={saving || !reconciled} className="w-full">
-                {saving ? 'Menyimpan…' : !reconciled ? 'Total belum cocok' : 'Simpan'}
+              <Button onClick={save} disabled={!reconciled} className="w-full">
+                {!reconciled ? 'Total belum cocok' : 'Simpan'}
               </Button>
             </div>
           </>
