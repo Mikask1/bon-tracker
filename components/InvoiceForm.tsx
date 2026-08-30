@@ -466,7 +466,7 @@ export function InvoiceForm({
                     className={
                       'h-11 flex-1 text-base font-semibold ' +
                       (deliveryStatus === 'DIKIRIM'
-                        ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-700 hover:text-white'
+                        ? 'border-amber-200 bg-amber-200 text-amber-900 hover:bg-amber-200 hover:text-amber-900'
                         : '')
                     }
                   >
@@ -480,7 +480,7 @@ export function InvoiceForm({
                     className={
                       'h-11 flex-1 text-base font-semibold ' +
                       (deliveryStatus === 'BELUM_DIKIRIM'
-                        ? 'border-blue-300 bg-blue-300 text-blue-950 hover:bg-blue-300 hover:text-blue-950'
+                        ? 'border-gray-300 bg-gray-300 text-gray-700 hover:bg-gray-300 hover:text-gray-700'
                         : '')
                     }
                   >

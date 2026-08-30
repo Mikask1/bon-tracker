@@ -414,7 +414,7 @@ export function InvoiceList() {
                 className={
                   'h-11 flex-1 text-base font-semibold ' +
                   (selectedDeliveries.includes('DIKIRIM')
-                    ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-700 hover:text-white'
+                    ? 'border-amber-200 bg-amber-200 text-amber-900 hover:bg-amber-200 hover:text-amber-900'
                     : '')
                 }
               >
@@ -428,7 +428,7 @@ export function InvoiceList() {
                 className={
                   'h-11 flex-1 text-base font-semibold ' +
                   (selectedDeliveries.includes('BELUM_DIKIRIM')
-                    ? 'border-blue-300 bg-blue-300 text-blue-950 hover:bg-blue-300 hover:text-blue-950'
+                    ? 'border-gray-300 bg-gray-300 text-gray-700 hover:bg-gray-300 hover:text-gray-700'
                     : '')
                 }
               >
@@ -551,7 +551,7 @@ export function InvoiceList() {
                   <span
                     aria-hidden
                     className={`absolute inset-y-0 -left-3 w-1 ${
-                      delivered ? 'bg-blue-700' : 'bg-blue-300'
+                      delivered ? 'bg-amber-400' : 'bg-gray-400'
                     }`}
                   />
 
@@ -569,8 +569,8 @@ export function InvoiceList() {
                     leftAction={{
                       label: delivered ? 'Belum Kirim' : 'Kirim',
                       className: delivered
-                        ? 'bg-blue-300 text-blue-950'
-                        : 'bg-blue-700',
+                        ? 'bg-gray-300 text-gray-700'
+                        : 'bg-amber-200 text-amber-900',
                     }}
                   >
                     {/* Small square of the nota itself — the strongest recognition cue
@@ -615,8 +615,8 @@ export function InvoiceList() {
                       <span
                         className={`font-semibold ${
                           delivered
-                            ? 'text-blue-700 dark:text-blue-400'
-                            : 'text-blue-400 dark:text-blue-300'
+                            ? 'text-amber-700 dark:text-amber-400'
+                            : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >
                         {delivered ? 'Dikirim' : 'Belum Dikirim'}
