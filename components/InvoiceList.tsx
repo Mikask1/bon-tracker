@@ -344,7 +344,7 @@ export function InvoiceList() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl select-none flex-col">
       <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -817,7 +817,10 @@ export function InvoiceList() {
           {/* Same detail-page content as app/invoice/[localId]/page.tsx, minus the
               photo — this is a quick-glance sheet, not the full detail view. */}
           {actionRow && (
-            <div className="min-h-0 flex-1 overflow-y-auto px-4">
+            <div
+              className="min-h-0 flex-1 overflow-y-auto border-b px-4"
+              style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+            >
               <div className="flex flex-col gap-4 pb-4">
                 <section>
                   <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
@@ -877,7 +880,7 @@ export function InvoiceList() {
             </div>
           )}
 
-          <DrawerFooter>
+          <DrawerFooter className="border-y">
             <Button
               variant="outline"
               className={
@@ -907,9 +910,6 @@ export function InvoiceList() {
               }}
             >
               {actionRow?.deliveryStatus === 'DIKIRIM' ? 'Tandai Belum Dikirim' : 'Tandai Dikirim'}
-            </Button>
-            <Button variant="outline" className="h-12" onClick={() => setActionRow(null)}>
-              Batal
             </Button>
           </DrawerFooter>
         </DrawerContent>
