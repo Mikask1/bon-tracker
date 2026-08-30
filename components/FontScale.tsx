@@ -15,10 +15,11 @@ export function FontScaleApplier() {
   return null;
 }
 
-// Header entry point to the settings page. Sized above the 44px touch floor.
+// Entry point to the settings page, sitting in the bottom bar beside Bon Baru.
+// Squared off at the bar's own height so the two read as one row of controls.
 export function SettingsButton() {
   return (
-    <Button asChild variant="outline" aria-label="Pengaturan" className="size-12">
+    <Button asChild variant="outline" aria-label="Pengaturan" className="size-14 shrink-0">
       <Link href="/settings">
         <Settings className="size-5" />
       </Link>
