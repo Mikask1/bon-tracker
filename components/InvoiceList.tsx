@@ -414,7 +414,7 @@ export function InvoiceList() {
                 className={
                   'h-11 flex-1 text-base font-semibold ' +
                   (selectedDeliveries.includes('DIKIRIM')
-                    ? 'border-amber-200 bg-amber-200 text-amber-900 hover:bg-amber-200 hover:text-amber-900'
+                    ? 'border-yellow-200 bg-yellow-200 text-yellow-900 hover:bg-yellow-200 hover:text-yellow-900'
                     : '')
                 }
               >
@@ -551,7 +551,7 @@ export function InvoiceList() {
                   <span
                     aria-hidden
                     className={`absolute inset-y-0 -left-3 w-1 ${
-                      delivered ? 'bg-amber-400' : 'bg-gray-400'
+                      delivered ? 'bg-yellow-400' : 'bg-gray-400'
                     }`}
                   />
 
@@ -570,7 +570,7 @@ export function InvoiceList() {
                       label: delivered ? 'Belum Kirim' : 'Kirim',
                       className: delivered
                         ? 'bg-gray-300 text-gray-700'
-                        : 'bg-amber-200 text-amber-900',
+                        : 'bg-yellow-200 text-yellow-900',
                     }}
                   >
                     {/* Small square of the nota itself — the strongest recognition cue
@@ -615,7 +615,7 @@ export function InvoiceList() {
                       <span
                         className={`font-semibold ${
                           delivered
-                            ? 'text-amber-700 dark:text-amber-400'
+                            ? 'text-yellow-700 dark:text-yellow-400'
                             : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >

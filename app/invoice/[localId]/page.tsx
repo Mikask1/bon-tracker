@@ -119,7 +119,7 @@ function Detail({ localId }: { localId: string }) {
               </Badge>
             )}
             {inv.deliveryStatus === 'DIKIRIM' ? (
-              <Badge className="bg-amber-200 px-3 py-1 text-sm text-amber-900 hover:bg-amber-200">
+              <Badge className="bg-yellow-200 px-3 py-1 text-sm text-yellow-900 hover:bg-yellow-200">
                 Dikirim
               </Badge>
             ) : (
