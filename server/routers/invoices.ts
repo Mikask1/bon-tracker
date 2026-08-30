@@ -145,8 +145,8 @@ export const invoicesRouter = router({
       return serialize(doc);
     }),
 
-  // Quick single-field toggle for the list's swipe gesture — avoids resubmitting
-  // the whole invoice (items, buyer, …) just to flip lunas/belum lunas.
+  // Quick single-field toggle for the list's long-press menu — avoids
+  // resubmitting the whole invoice (items, buyer, …) just to flip lunas/belum lunas.
   setStatus: adminProcedure
     .input(z.object({ localId: z.string(), status: z.enum(STATUS) }))
     .mutation(async ({ input }) => {
@@ -158,7 +158,7 @@ export const invoicesRouter = router({
       return serialize(doc.toObject());
     }),
 
-  // Quick single-field toggle for the list's swipe gesture.
+  // Quick single-field toggle for the list's long-press menu.
   setDeliveryStatus: adminProcedure
     .input(
       z.object({ localId: z.string(), deliveryStatus: z.enum(DELIVERY_STATUS) })

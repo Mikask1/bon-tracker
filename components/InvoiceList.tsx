@@ -10,9 +10,10 @@ import {
   matchesFilters,
   groupByDay,
   itemSummary,
+  type InvoiceRow,
 } from '@/hooks/useInvoiceRows';
 import { InvoiceThumb } from '@/components/InvoiceThumb';
-import { SwipeableRow } from '@/components/SwipeableRow';
+import { LongPressRow } from '@/components/LongPressRow';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { uploadImage } from '@/lib/upload';
@@ -29,6 +30,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerFooter,
 } from '@/components/ui/drawer';
 import {
   Plus,
@@ -106,6 +108,8 @@ export function InvoiceList() {
   const [dup, setDup] = useState<
     { file: File; hash: string; localId: string; invoiceId: string } | null
   >(null);
+  // Row a long-press opened the quick-actions menu for.
+  const [actionRow, setActionRow] = useState<InvoiceRow | null>(null);
 
   const addJob = useScanJobStore((s) => s.add);
   const updateJob = useScanJobStore((s) => s.update);
@@ -238,9 +242,9 @@ export function InvoiceList() {
     placeholderData: keepPreviousData,
   });
 
-  // Quick single-field toggles for the list's swipe gestures — patch the
-  // cached page instantly, then confirm against the server (or, for a still-
-  // local draft, patch the offline queue directly since there's no doc yet).
+  // Quick single-field toggles for the long-press menu — patch the cached
+  // page instantly, then confirm against the server (or, for a still-local
+  // draft, patch the offline queue directly since there's no doc yet).
   const setStatusMut = trpc.invoices.setStatus.useMutation();
   const setDeliveryMut = trpc.invoices.setDeliveryStatus.useMutation();
   const updatePendingInput = usePendingStore((s) => s.updateInput);
@@ -540,8 +544,7 @@ export function InvoiceList() {
               return (
                 <div key={r.localId} className="relative ml-4 border-t">
                   {/* Status spines. Length/position carry the state as well as hue
-                      does, so it survives colour deficiency. Static — they show the
-                      committed state, not the in-progress swipe. */}
+                      does, so it survives colour deficiency. */}
                   <span
                     aria-hidden
                     className={`absolute inset-y-0 -left-4 w-1 ${
@@ -555,23 +558,12 @@ export function InvoiceList() {
                     }`}
                   />
 
-                  {/* Swipe left to toggle lunas/belum lunas, right to toggle
-                      dikirim/belum dikirim; tap anywhere else opens the bon. */}
-                  <SwipeableRow
+                  {/* Tap opens the bon; long-press opens a quick-actions menu to
+                      toggle lunas/belum lunas or dikirim/belum dikirim. */}
+                  <LongPressRow
                     className="flex items-center gap-3 py-3 pl-3 pr-4 active:bg-muted/50"
                     onTap={() => router.push(`/invoice/${r.localId}`)}
-                    onSwipeLeft={() => toggleRowStatus(r)}
-                    onSwipeRight={() => toggleRowDelivery(r)}
-                    rightAction={{
-                      label: paid ? 'Belum Lunas' : 'Lunas',
-                      className: paid ? 'bg-destructive' : 'bg-blue-600',
-                    }}
-                    leftAction={{
-                      label: delivered ? 'Belum Kirim' : 'Kirim',
-                      className: delivered
-                        ? 'bg-gray-300 text-gray-700'
-                        : 'bg-yellow-200 text-yellow-900',
-                    }}
+                    onLongPress={() => setActionRow(r)}
                   >
                     {/* Small square of the nota itself — the strongest recognition cue
                         for a bon the owner was present for. Requested at 2× so it stays
@@ -622,7 +614,7 @@ export function InvoiceList() {
                         {delivered ? 'Dikirim' : 'Belum Dikirim'}
                       </span>
                     </div>
-                  </SwipeableRow>
+                  </LongPressRow>
                 </div>
               );
             })}
@@ -811,6 +803,51 @@ export function InvoiceList() {
               Tidak
             </Button>
           </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Long-press quick actions: two one-tap toggles, each labeled with the
+          state it will switch to. Auto-dismisses after either is tapped. */}
+      <Drawer open={!!actionRow} onOpenChange={(v) => !v && setActionRow(null)}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{actionRow?.buyer.name || 'Bon'}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerFooter>
+            <Button
+              variant="outline"
+              className={
+                'h-12 ' +
+                (actionRow?.status === 'LUNAS'
+                  ? 'border-destructive bg-destructive text-white hover:bg-destructive hover:text-white'
+                  : 'border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white')
+              }
+              onClick={() => {
+                if (actionRow) toggleRowStatus(actionRow);
+                setActionRow(null);
+              }}
+            >
+              {actionRow?.status === 'LUNAS' ? 'Tandai Belum Lunas' : 'Tandai Lunas'}
+            </Button>
+            <Button
+              variant="outline"
+              className={
+                'h-12 ' +
+                (actionRow?.deliveryStatus === 'DIKIRIM'
+                  ? 'border-gray-300 bg-gray-300 text-gray-700 hover:bg-gray-300 hover:text-gray-700'
+                  : 'border-yellow-200 bg-yellow-200 text-yellow-900 hover:bg-yellow-200 hover:text-yellow-900')
+              }
+              onClick={() => {
+                if (actionRow) toggleRowDelivery(actionRow);
+                setActionRow(null);
+              }}
+            >
+              {actionRow?.deliveryStatus === 'DIKIRIM' ? 'Tandai Belum Dikirim' : 'Tandai Dikirim'}
+            </Button>
+            <Button variant="outline" className="h-12" onClick={() => setActionRow(null)}>
+              Batal
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>
