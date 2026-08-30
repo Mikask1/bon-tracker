@@ -11,19 +11,13 @@ import { ImageZoom } from '@/components/ImageZoom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
 import {
   computeGrandTotal,
   invoiceInputSchema,
   type Status,
+  type DeliveryStatus,
 } from '@/types/invoice';
 import { formatRupiah } from '@/lib/format';
 
@@ -72,6 +66,8 @@ export function InvoiceForm({
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [status, setStatus] = useState<Status>('BELUM_LUNAS');
   const [unpaid, setUnpaid] = useState('');
+  const [deliveryStatus, setDeliveryStatus] =
+    useState<DeliveryStatus>('BELUM_DIKIRIM');
   const [invDate, setInvDate] = useState(''); // yyyy-mm-dd; date printed on the nota
   const [imageUrl, setImageUrl] = useState('');
   // Nota total to reconcile summed items against (create only). Seeded from the scan,
@@ -99,6 +95,7 @@ export function InvoiceForm({
     setRows([emptyRow()]);
     setStatus('BELUM_LUNAS');
     setUnpaid('');
+    setDeliveryStatus('BELUM_DIKIRIM');
     setImageUrl('');
     setTotalStr('');
     setInvDate(toYMD(new Date()));
@@ -126,6 +123,7 @@ export function InvoiceForm({
       );
       setStatus(initial.status);
       setUnpaid(initial.status === 'BELUM_LUNAS' ? String(initial.unpaidAmount) : '');
+      setDeliveryStatus(initial.deliveryStatus);
       setImageUrl(initial.imageUrl);
       setTotalStr(''); // editing a saved invoice: no reconciliation field
       setInvDate(toYMD(new Date(initial.invoiceCreatedAt)));
@@ -211,6 +209,7 @@ export function InvoiceForm({
       items,
       status,
       unpaidAmount,
+      deliveryStatus,
       imageUrl: imageUrl || job?.imageUrl || '',
       imageHash: job?.imageHash,
     };
@@ -406,22 +405,44 @@ export function InvoiceForm({
 
               <div className="flex flex-col gap-2">
                 <Label>Status</Label>
-                <Select
-                  value={status}
-                  onValueChange={(v) => {
-                    const s = v as Status;
-                    setStatus(s);
-                    setUnpaid(s === 'BELUM_LUNAS' ? String(grandTotal) : '');
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LUNAS">Lunas</SelectItem>
-                    <SelectItem value="BELUM_LUNAS">Belum Lunas</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Always exactly one of the two — unlike the list's filter chips,
+                    which can be both/neither, a bon's own status is either/or. */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-pressed={status === 'LUNAS'}
+                    onClick={() => {
+                      setStatus('LUNAS');
+                      setUnpaid('');
+                    }}
+                    className={
+                      'h-11 flex-1 text-base font-semibold ' +
+                      (status === 'LUNAS'
+                        ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
+                        : '')
+                    }
+                  >
+                    Lunas
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-pressed={status === 'BELUM_LUNAS'}
+                    onClick={() => {
+                      setStatus('BELUM_LUNAS');
+                      setUnpaid(String(grandTotal));
+                    }}
+                    className={
+                      'h-11 flex-1 text-base font-semibold ' +
+                      (status === 'BELUM_LUNAS'
+                        ? 'border-destructive bg-destructive text-white hover:bg-destructive hover:text-white'
+                        : '')
+                    }
+                  >
+                    Belum Lunas
+                  </Button>
+                </div>
                 {status === 'BELUM_LUNAS' && (
                   <>
                     <Label>Jumlah belum dibayar</Label>
@@ -432,6 +453,40 @@ export function InvoiceForm({
                     />
                   </>
                 )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>Pengiriman</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-pressed={deliveryStatus === 'DIKIRIM'}
+                    onClick={() => setDeliveryStatus('DIKIRIM')}
+                    className={
+                      'h-11 flex-1 text-base font-semibold ' +
+                      (deliveryStatus === 'DIKIRIM'
+                        ? 'border-blue-700 bg-blue-700 text-white hover:bg-blue-700 hover:text-white'
+                        : '')
+                    }
+                  >
+                    Dikirim
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-pressed={deliveryStatus === 'BELUM_DIKIRIM'}
+                    onClick={() => setDeliveryStatus('BELUM_DIKIRIM')}
+                    className={
+                      'h-11 flex-1 text-base font-semibold ' +
+                      (deliveryStatus === 'BELUM_DIKIRIM'
+                        ? 'border-blue-300 bg-blue-300 text-blue-950 hover:bg-blue-300 hover:text-blue-950'
+                        : '')
+                    }
+                  >
+                    Belum Dikirim
+                  </Button>
+                </div>
               </div>
             </div>
 

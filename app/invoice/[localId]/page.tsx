@@ -118,6 +118,15 @@ function Detail({ localId }: { localId: string }) {
                 Belum Lunas
               </Badge>
             )}
+            {inv.deliveryStatus === 'DIKIRIM' ? (
+              <Badge className="bg-blue-700 px-3 py-1 text-sm text-white hover:bg-blue-700">
+                Dikirim
+              </Badge>
+            ) : (
+              <Badge className="bg-blue-300 px-3 py-1 text-sm text-blue-950 hover:bg-blue-300">
+                Belum Dikirim
+              </Badge>
+            )}
             {inv.sync !== 'synced' && (
               <Badge variant="secondary">
                 {inv.sync === 'error' ? 'Gagal sinkron' : 'Menunggu sinkron'}

@@ -5,6 +5,7 @@ import {
   type Buyer,
   type Item,
   type Status,
+  type DeliveryStatus,
   type Invoice,
 } from '@/types/invoice';
 import type { PendingInvoice } from '@/store/pendingInvoiceStore';
@@ -17,6 +18,7 @@ export interface InvoiceRow {
   grandTotal: number;
   status: Status;
   unpaidAmount: number;
+  deliveryStatus: DeliveryStatus;
   imageUrl: string;
   invoiceCreatedAt: Date;
   createdAt: Date;
@@ -32,6 +34,7 @@ export function serverToRow(i: Invoice): InvoiceRow {
     grandTotal: i.grandTotal,
     status: i.status,
     unpaidAmount: i.unpaidAmount,
+    deliveryStatus: i.deliveryStatus,
     imageUrl: i.imageUrl,
     invoiceCreatedAt: new Date(i.invoiceCreatedAt),
     createdAt: new Date(i.createdAt),
@@ -48,6 +51,7 @@ export function pendingToRow(p: PendingInvoice): InvoiceRow {
     grandTotal: computeGrandTotal(p.input.items),
     status: p.input.status,
     unpaidAmount: p.input.unpaidAmount,
+    deliveryStatus: p.input.deliveryStatus,
     imageUrl: p.input.imageUrl,
     invoiceCreatedAt: new Date(p.input.invoiceCreatedAt),
     createdAt: new Date(p.input.createdAt),
@@ -103,9 +107,16 @@ export function toYMD(d: Date): string {
 // consistent with the active filters.
 export function matchesFilters(
   r: InvoiceRow,
-  f: { q: string; status: 'ALL' | Status; from: string; to: string }
+  f: {
+    q: string;
+    status: 'ALL' | Status;
+    delivery: 'ALL' | DeliveryStatus;
+    from: string;
+    to: string;
+  }
 ): boolean {
   if (f.status !== 'ALL' && r.status !== f.status) return false;
+  if (f.delivery !== 'ALL' && r.deliveryStatus !== f.delivery) return false;
   const ymd = toYMD(r.createdAt);
   if (f.from && ymd < f.from) return false;
   if (f.to && ymd > f.to) return false;

@@ -13,6 +13,7 @@ export interface PendingInvoice {
 interface PendingState {
   items: Record<string, PendingInvoice>;
   enqueue: (input: InvoiceInput) => void;
+  updateInput: (localId: string, patch: Partial<InvoiceInput>) => void;
   markError: (localId: string, error: string) => void;
   remove: (localId: string) => void;
   list: () => PendingInvoice[];
@@ -29,6 +30,17 @@ export const usePendingStore = create<PendingState>()(
             [input.localId]: { input, syncStatus: 'pending' },
           },
         })),
+      updateInput: (localId, patch) =>
+        set((s) => {
+          const cur = s.items[localId];
+          if (!cur) return s;
+          return {
+            items: {
+              ...s.items,
+              [localId]: { ...cur, input: { ...cur.input, ...patch } },
+            },
+          };
+        }),
       markError: (localId, error) =>
         set((s) => {
           const cur = s.items[localId];
