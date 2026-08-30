@@ -813,6 +813,70 @@ export function InvoiceList() {
           <DrawerHeader className="text-left">
             <DrawerTitle>{actionRow?.buyer.name || 'Bon'}</DrawerTitle>
           </DrawerHeader>
+
+          {/* Same detail-page content as app/invoice/[localId]/page.tsx, minus the
+              photo — this is a quick-glance sheet, not the full detail view. */}
+          {actionRow && (
+            <div className="min-h-0 flex-1 overflow-y-auto px-4">
+              <div className="flex flex-col gap-4 pb-4">
+                <section>
+                  <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
+                    Pembeli
+                  </h3>
+                  {actionRow.buyer.name && (
+                    <p className="font-medium">{actionRow.buyer.name}</p>
+                  )}
+                  <p>{actionRow.buyer.address}</p>
+                  {actionRow.buyer.phoneNumber && (
+                    <p className="text-muted-foreground">{actionRow.buyer.phoneNumber}</p>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                    Barang
+                  </h3>
+                  <div className="flex flex-col divide-y rounded-lg border">
+                    {actionRow.items.map((it, i) => (
+                      <div key={i} className="flex items-start justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{it.itemName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {it.itemQty} × {formatRupiah(it.unitPrice)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-medium">
+                          {formatRupiah(it.itemQty * it.unitPrice)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="flex flex-col gap-1 border-t pt-3">
+                  <div className="flex items-center justify-between text-base font-semibold">
+                    <span>Total</span>
+                    <span>{formatRupiah(actionRow.grandTotal)}</span>
+                  </div>
+                  {actionRow.status === 'BELUM_LUNAS' && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>Sudah dibayar</span>
+                        <span>
+                          {formatRupiah(actionRow.grandTotal - actionRow.unpaidAmount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-lg font-semibold text-destructive">
+                        <span>Belum dibayar</span>
+                        <span>{formatRupiah(actionRow.unpaidAmount)}</span>
+                      </div>
+                    </>
+                  )}
+                </section>
+              </div>
+            </div>
+          )}
+
           <DrawerFooter>
             <Button
               variant="outline"
