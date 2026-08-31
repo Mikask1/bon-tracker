@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { STATUS } from '@/types/invoice';
+import { STATUS, DELIVERY_STATUS } from '@/types/invoice';
 
 const itemSchema = new Schema(
   {
@@ -29,6 +29,11 @@ const invoiceSchema = new Schema(
     grandTotal: { type: Number, required: true },
     status: { type: String, enum: STATUS, required: true },
     unpaidAmount: { type: Number, default: 0 },
+    deliveryStatus: {
+      type: String,
+      enum: DELIVERY_STATUS,
+      default: 'BELUM_DIKIRIM',
+    },
     imageUrl: { type: String, default: '' },
     // SHA-256 of the uploaded photo bytes — dedupes re-uploads of the same invoice.
     // sparse: manual/legacy invoices have no hash and must not collide on null.
@@ -43,6 +48,7 @@ const invoiceSchema = new Schema(
 
 // Filter-by-status + sort/paginate-by-date — hits on every list load.
 invoiceSchema.index({ status: 1, createdAt: -1 });
+invoiceSchema.index({ deliveryStatus: 1, createdAt: -1 });
 // ponytail: substring search (regex $or) is NOT index-accelerated; fine for a toko.
 // For indexed partial search at scale, move to MongoDB Atlas Search.
 

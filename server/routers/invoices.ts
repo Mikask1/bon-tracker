@@ -5,6 +5,8 @@ import Invoice from '@/lib/models/Invoice';
 import {
   invoiceInputSchema,
   computeGrandTotal,
+  STATUS,
+  DELIVERY_STATUS,
   type Invoice as InvoiceType,
 } from '@/types/invoice';
 import { generateInvoiceId } from '@/lib/utils/invoiceId';
@@ -28,6 +30,7 @@ function serialize(doc: any): InvoiceType {
     grandTotal: doc.grandTotal,
     status: doc.status,
     unpaidAmount: doc.unpaidAmount ?? 0,
+    deliveryStatus: doc.deliveryStatus ?? 'BELUM_DIKIRIM',
     imageUrl: doc.imageUrl ?? '',
     imageHash: doc.imageHash ?? undefined,
     invoiceCreatedAt: doc.invoiceCreatedAt ?? doc.createdAt,
@@ -43,6 +46,7 @@ function escapeRegex(s: string): string {
 const listInput = z.object({
   q: z.string().default(''),
   status: z.enum(['ALL', 'LUNAS', 'BELUM_LUNAS']).default('ALL'),
+  delivery: z.enum(['ALL', 'DIKIRIM', 'BELUM_DIKIRIM']).default('ALL'),
   dateFrom: z.string().optional(), // yyyy-mm-dd
   dateTo: z.string().optional(),
   page: z.number().int().min(1).default(1),
@@ -55,6 +59,7 @@ export const invoicesRouter = router({
     const filter: Record<string, unknown> = {};
 
     if (input.status !== 'ALL') filter.status = input.status;
+    if (input.delivery !== 'ALL') filter.deliveryStatus = input.delivery;
 
     if (input.dateFrom || input.dateTo) {
       const range: Record<string, Date> = {};
@@ -129,10 +134,39 @@ export const invoicesRouter = router({
           items: input.items,
           status: input.status,
           unpaidAmount: input.unpaidAmount,
+          deliveryStatus: input.deliveryStatus,
           imageUrl: input.imageUrl,
           invoiceCreatedAt: input.invoiceCreatedAt,
           grandTotal,
         },
+        { new: true }
+      ).lean();
+      if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
+      return serialize(doc);
+    }),
+
+  // Quick single-field toggle for the list's long-press menu — avoids
+  // resubmitting the whole invoice (items, buyer, …) just to flip lunas/belum lunas.
+  setStatus: adminProcedure
+    .input(z.object({ localId: z.string(), status: z.enum(STATUS) }))
+    .mutation(async ({ input }) => {
+      const doc = await Invoice.findOne({ localId: input.localId });
+      if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });
+      doc.status = input.status;
+      doc.unpaidAmount = input.status === 'BELUM_LUNAS' ? doc.grandTotal : 0;
+      await doc.save();
+      return serialize(doc.toObject());
+    }),
+
+  // Quick single-field toggle for the list's long-press menu.
+  setDeliveryStatus: adminProcedure
+    .input(
+      z.object({ localId: z.string(), deliveryStatus: z.enum(DELIVERY_STATUS) })
+    )
+    .mutation(async ({ input }) => {
+      const doc = await Invoice.findOneAndUpdate(
+        { localId: input.localId },
+        { deliveryStatus: input.deliveryStatus },
         { new: true }
       ).lean();
       if (!doc) throw new TRPCError({ code: 'NOT_FOUND' });

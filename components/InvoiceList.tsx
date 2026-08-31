@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { usePendingStore } from '@/store/pendingInvoiceStore';
@@ -11,8 +10,10 @@ import {
   matchesFilters,
   groupByDay,
   itemSummary,
+  type InvoiceRow,
 } from '@/hooks/useInvoiceRows';
 import { InvoiceThumb } from '@/components/InvoiceThumb';
+import { LongPressRow } from '@/components/LongPressRow';
 import { SettingsButton } from './FontScale';
 import { useScanJobStore } from '@/store/scanJobStore';
 import { uploadImage } from '@/lib/upload';
@@ -29,6 +30,7 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
+  DrawerFooter,
 } from '@/components/ui/drawer';
 import {
   Plus,
@@ -43,7 +45,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { formatRupiah, formatDayHeading, formatShortDate } from '@/lib/format';
-import type { Status } from '@/types/invoice';
+import type { Status, DeliveryStatus, Invoice } from '@/types/invoice';
 
 const PAGE_SIZE = 15;
 
@@ -106,6 +108,8 @@ export function InvoiceList() {
   const [dup, setDup] = useState<
     { file: File; hash: string; localId: string; invoiceId: string } | null
   >(null);
+  // Row a long-press opened the quick-actions menu for.
+  const [actionRow, setActionRow] = useState<InvoiceRow | null>(null);
 
   const addJob = useScanJobStore((s) => s.add);
   const updateJob = useScanJobStore((s) => s.update);
@@ -192,6 +196,9 @@ export function InvoiceList() {
   // exactly one actually narrows the list. Unlike a bon's own status (edited as an
   // either/or choice on the detail page), this filter can be both, one, or none.
   const [selectedStatuses, setSelectedStatuses] = useState<Status[]>([]);
+  const [selectedDeliveries, setSelectedDeliveries] = useState<DeliveryStatus[]>(
+    []
+  );
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
@@ -200,7 +207,13 @@ export function InvoiceList() {
 
   const status: 'ALL' | Status =
     selectedStatuses.length === 1 ? selectedStatuses[0] : 'ALL';
-  const filtersActive = selectedStatuses.length === 1 || !!from || !!to;
+  const delivery: 'ALL' | DeliveryStatus =
+    selectedDeliveries.length === 1 ? selectedDeliveries[0] : 'ALL';
+  const filtersActive =
+    selectedStatuses.length === 1 ||
+    selectedDeliveries.length === 1 ||
+    !!from ||
+    !!to;
 
   function toggleStatus(s: Status) {
     setSelectedStatuses((cur) =>
@@ -209,17 +222,88 @@ export function InvoiceList() {
     resetPage();
   }
 
-  const list = trpc.invoices.list.useQuery(
-    {
-      q: dq,
-      status,
-      dateFrom: from || undefined,
-      dateTo: to || undefined,
-      page,
-      limit: PAGE_SIZE,
-    },
-    { placeholderData: keepPreviousData }
-  );
+  function toggleDelivery(d: DeliveryStatus) {
+    setSelectedDeliveries((cur) =>
+      cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]
+    );
+    resetPage();
+  }
+
+  const listQueryInput = {
+    q: dq,
+    status,
+    delivery,
+    dateFrom: from || undefined,
+    dateTo: to || undefined,
+    page,
+    limit: PAGE_SIZE,
+  };
+  const list = trpc.invoices.list.useQuery(listQueryInput, {
+    placeholderData: keepPreviousData,
+  });
+
+  // Quick single-field toggles for the long-press menu — patch the cached
+  // page instantly, then confirm against the server (or, for a still-local
+  // draft, patch the offline queue directly since there's no doc yet).
+  const setStatusMut = trpc.invoices.setStatus.useMutation();
+  const setDeliveryMut = trpc.invoices.setDeliveryStatus.useMutation();
+  const updatePendingInput = usePendingStore((s) => s.updateInput);
+
+  function patchCachedRow(
+    localId: string,
+    patch: Partial<Pick<Invoice, 'status' | 'unpaidAmount' | 'deliveryStatus'>>
+  ) {
+    utils.invoices.list.setData(listQueryInput, (old) =>
+      old
+        ? {
+            ...old,
+            rows: old.rows.map((r) =>
+              r.localId === localId ? { ...r, ...patch } : r
+            ),
+          }
+        : old
+    );
+  }
+
+  function toggleRowStatus(r: { localId: string; status: Status; grandTotal: number; sync: string }) {
+    const next: Status = r.status === 'LUNAS' ? 'BELUM_LUNAS' : 'LUNAS';
+    const unpaidAmount = next === 'BELUM_LUNAS' ? r.grandTotal : 0;
+    if (r.sync !== 'synced') {
+      updatePendingInput(r.localId, { status: next, unpaidAmount });
+      return;
+    }
+    patchCachedRow(r.localId, { status: next, unpaidAmount });
+    setStatusMut.mutate(
+      { localId: r.localId, status: next },
+      {
+        onError: () => {
+          toast.error('Gagal memperbarui status');
+          utils.invoices.list.invalidate();
+        },
+        onSuccess: () => utils.invoices.list.invalidate(),
+      }
+    );
+  }
+
+  function toggleRowDelivery(r: { localId: string; deliveryStatus: DeliveryStatus; sync: string }) {
+    const next: DeliveryStatus =
+      r.deliveryStatus === 'DIKIRIM' ? 'BELUM_DIKIRIM' : 'DIKIRIM';
+    if (r.sync !== 'synced') {
+      updatePendingInput(r.localId, { deliveryStatus: next });
+      return;
+    }
+    patchCachedRow(r.localId, { deliveryStatus: next });
+    setDeliveryMut.mutate(
+      { localId: r.localId, deliveryStatus: next },
+      {
+        onError: () => {
+          toast.error('Gagal memperbarui status kirim');
+          utils.invoices.list.invalidate();
+        },
+        onSuccess: () => utils.invoices.list.invalidate(),
+      }
+    );
+  }
 
   const pendingMap = usePendingStore((s) => s.items);
 
@@ -235,7 +319,7 @@ export function InvoiceList() {
       ? Object.values(pendingMap)
           .filter((p) => !serverLocalIds.has(p.input.localId))
           .map(pendingToRow)
-          .filter((r) => matchesFilters(r, { q: dq, status, from, to }))
+          .filter((r) => matchesFilters(r, { q: dq, status, delivery, from, to }))
       : [];
 
   // Active scan jobs (not yet saved as an invoice) — always shown on top.
@@ -260,7 +344,7 @@ export function InvoiceList() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl select-none flex-col">
       <header className="sticky top-0 z-10 flex flex-col gap-2 border-b bg-background px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -321,6 +405,38 @@ export function InvoiceList() {
                 }
               >
                 Belum Lunas
+              </Button>
+            </div>
+
+            {/* Same independent-toggle pattern as above, for delivery status. */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedDeliveries.includes('DIKIRIM')}
+                onClick={() => toggleDelivery('DIKIRIM')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedDeliveries.includes('DIKIRIM')
+                    ? 'border-yellow-200 bg-yellow-200 text-yellow-900 hover:bg-yellow-200 hover:text-yellow-900'
+                    : '')
+                }
+              >
+                Dikirim
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={selectedDeliveries.includes('BELUM_DIKIRIM')}
+                onClick={() => toggleDelivery('BELUM_DIKIRIM')}
+                className={
+                  'h-11 flex-1 text-base font-semibold ' +
+                  (selectedDeliveries.includes('BELUM_DIKIRIM')
+                    ? 'border-gray-300 bg-gray-300 text-gray-700 hover:bg-gray-300 hover:text-gray-700'
+                    : '')
+                }
+              >
+                Belum Dikirim
               </Button>
             </div>
 
@@ -403,7 +519,12 @@ export function InvoiceList() {
 
         {!showSkeleton && rows.length === 0 && jobRows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            {total === 0 && !dq && status === 'ALL' && !from && !to
+            {total === 0 &&
+            !dq &&
+            status === 'ALL' &&
+            delivery === 'ALL' &&
+            !from &&
+            !to
               ? 'Belum ada bon. Tekan tombol + untuk menambah.'
               : 'Tidak ada bon yang cocok dengan filter.'}
           </p>
@@ -418,63 +539,83 @@ export function InvoiceList() {
 
             {g.rows.map((r) => {
               const paid = r.status === 'LUNAS';
+              const delivered = r.deliveryStatus === 'DIKIRIM';
               const summary = itemSummary(r.items);
               return (
-                <Link
-                  key={r.localId}
-                  href={`/invoice/${r.localId}`}
-                  className="relative ml-4 flex items-center gap-3 border-t py-3 pl-3 pr-4 active:bg-muted/50"
-                >
-                  {/* Status spine. Length and position carry the state as well as
-                      hue does, so it survives colour deficiency. */}
+                <div key={r.localId} className="relative ml-4 border-t">
+                  {/* Status spines. Length/position carry the state as well as hue
+                      does, so it survives colour deficiency. */}
                   <span
                     aria-hidden
                     className={`absolute inset-y-0 -left-4 w-1 ${
                       paid ? 'bg-blue-600' : 'bg-destructive'
                     }`}
                   />
+                  <span
+                    aria-hidden
+                    className={`absolute inset-y-0 -left-3 w-1 ${
+                      delivered ? 'bg-yellow-400' : 'bg-gray-400'
+                    }`}
+                  />
 
-                  {/* Small square of the nota itself — the strongest recognition cue
-                      for a bon the owner was present for. Requested at 2× so it stays
-                      sharp on a retina screen. */}
-                  <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
-                    <InvoiceThumb src={r.imageUrl} size={80} />
-                  </div>
+                  {/* Tap opens the bon; long-press opens a quick-actions menu to
+                      toggle lunas/belum lunas or dikirim/belum dikirim. */}
+                  <LongPressRow
+                    className="flex items-center gap-3 py-3 pl-3 pr-4 active:bg-muted/50"
+                    onTap={() => router.push(`/invoice/${r.localId}`)}
+                    onLongPress={() => setActionRow(r)}
+                  >
+                    {/* Small square of the nota itself — the strongest recognition cue
+                        for a bon the owner was present for. Requested at 2× so it stays
+                        sharp on a retina screen. */}
+                    <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <InvoiceThumb src={r.imageUrl} size={80} />
+                    </div>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{r.buyer.name || '—'}</p>
-                    {summary && (
-                      <p className="truncate text-sm text-muted-foreground">
-                        {summary}
-                      </p>
-                    )}
-                    {r.sync === 'pending' && (
-                      <Badge variant="secondary" className="mt-1">
-                        Menunggu sinkron
-                      </Badge>
-                    )}
-                    {r.sync === 'error' && (
-                      <Badge variant="destructive" className="mt-1">
-                        Gagal sinkron
-                      </Badge>
-                    )}
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{r.buyer.name || '—'}</p>
+                      {summary && (
+                        <p className="truncate text-sm text-muted-foreground">
+                          {summary}
+                        </p>
+                      )}
+                      {r.sync === 'pending' && (
+                        <Badge variant="secondary" className="mt-1">
+                          Menunggu sinkron
+                        </Badge>
+                      )}
+                      {r.sync === 'error' && (
+                        <Badge variant="destructive" className="mt-1">
+                          Gagal sinkron
+                        </Badge>
+                      )}
+                    </div>
 
-                  {/* Whether it is paid, and how much is still owed — nothing else.
-                      The grand total isn't the question a bon list answers, so it
-                      doesn't appear here at all (it's still on the detail page). */}
-                  <div className="min-w-24 shrink-0 text-right">
-                    {paid ? (
-                      <span className="font-semibold text-blue-700 dark:text-blue-400">
-                        Lunas
+                    {/* Whether it is paid and how much is still owed, plus whether
+                        it's been delivered — nothing else. The grand total isn't the
+                        question a bon list answers, so it stays on the detail page. */}
+                    <div className="flex min-w-24 shrink-0 flex-col items-end gap-0.5 text-right">
+                      {paid ? (
+                        <span className="font-semibold text-blue-700 dark:text-blue-400">
+                          Lunas
+                        </span>
+                      ) : (
+                        <span className="font-semibold tabular-nums text-destructive">
+                          Sisa {formatRupiah(r.unpaidAmount)}
+                        </span>
+                      )}
+                      <span
+                        className={`font-semibold ${
+                          delivered
+                            ? 'text-yellow-700 dark:text-yellow-400'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {delivered ? 'Dikirim' : 'Belum Dikirim'}
                       </span>
-                    ) : (
-                      <span className="font-semibold tabular-nums text-destructive">
-                        Sisa {formatRupiah(r.unpaidAmount)}
-                      </span>
-                    )}
-                  </div>
-                </Link>
+                    </div>
+                  </LongPressRow>
+                </div>
               );
             })}
           </section>
@@ -662,6 +803,115 @@ export function InvoiceList() {
               Tidak
             </Button>
           </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Long-press quick actions: two one-tap toggles, each labeled with the
+          state it will switch to. Auto-dismisses after either is tapped. */}
+      <Drawer open={!!actionRow} onOpenChange={(v) => !v && setActionRow(null)}>
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{actionRow?.buyer.name || 'Bon'}</DrawerTitle>
+          </DrawerHeader>
+
+          {/* Same detail-page content as app/invoice/[localId]/page.tsx, minus the
+              photo — this is a quick-glance sheet, not the full detail view. */}
+          {actionRow && (
+            <div
+              className="min-h-0 flex-1 overflow-y-auto border-b px-4"
+              style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+            >
+              <div className="flex flex-col gap-4 pb-4">
+                <section>
+                  <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
+                    Pembeli
+                  </h3>
+                  {actionRow.buyer.name && (
+                    <p className="font-medium">{actionRow.buyer.name}</p>
+                  )}
+                  <p>{actionRow.buyer.address}</p>
+                  {actionRow.buyer.phoneNumber && (
+                    <p className="text-muted-foreground">{actionRow.buyer.phoneNumber}</p>
+                  )}
+                </section>
+
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                    Barang
+                  </h3>
+                  <div className="flex flex-col divide-y rounded-lg border">
+                    {actionRow.items.map((it, i) => (
+                      <div key={i} className="flex items-start justify-between gap-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{it.itemName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {it.itemQty} × {formatRupiah(it.unitPrice)}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-medium">
+                          {formatRupiah(it.itemQty * it.unitPrice)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="flex flex-col gap-1 border-t pt-3">
+                  <div className="flex items-center justify-between text-base font-semibold">
+                    <span>Total</span>
+                    <span>{formatRupiah(actionRow.grandTotal)}</span>
+                  </div>
+                  {actionRow.status === 'BELUM_LUNAS' && (
+                    <>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>Sudah dibayar</span>
+                        <span>
+                          {formatRupiah(actionRow.grandTotal - actionRow.unpaidAmount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-lg font-semibold text-destructive">
+                        <span>Belum dibayar</span>
+                        <span>{formatRupiah(actionRow.unpaidAmount)}</span>
+                      </div>
+                    </>
+                  )}
+                </section>
+              </div>
+            </div>
+          )}
+
+          <DrawerFooter className="border-y">
+            <Button
+              variant="outline"
+              className={
+                'h-12 ' +
+                (actionRow?.status === 'LUNAS'
+                  ? 'border-destructive bg-destructive text-white hover:bg-destructive hover:text-white'
+                  : 'border-blue-600 bg-blue-600 text-white hover:bg-blue-600 hover:text-white')
+              }
+              onClick={() => {
+                if (actionRow) toggleRowStatus(actionRow);
+                setActionRow(null);
+              }}
+            >
+              {actionRow?.status === 'LUNAS' ? 'Tandai Belum Lunas' : 'Tandai Lunas'}
+            </Button>
+            <Button
+              variant="outline"
+              className={
+                'h-12 ' +
+                (actionRow?.deliveryStatus === 'DIKIRIM'
+                  ? 'border-gray-300 bg-gray-300 text-gray-700 hover:bg-gray-300 hover:text-gray-700'
+                  : 'border-yellow-200 bg-yellow-200 text-yellow-900 hover:bg-yellow-200 hover:text-yellow-900')
+              }
+              onClick={() => {
+                if (actionRow) toggleRowDelivery(actionRow);
+                setActionRow(null);
+              }}
+            >
+              {actionRow?.deliveryStatus === 'DIKIRIM' ? 'Tandai Belum Dikirim' : 'Tandai Dikirim'}
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

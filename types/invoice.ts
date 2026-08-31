@@ -3,6 +3,9 @@ import { z } from 'zod';
 export const STATUS = ['LUNAS', 'BELUM_LUNAS'] as const;
 export type Status = (typeof STATUS)[number];
 
+export const DELIVERY_STATUS = ['DIKIRIM', 'BELUM_DIKIRIM'] as const;
+export type DeliveryStatus = (typeof DELIVERY_STATUS)[number];
+
 export function computeGrandTotal(
   items: { itemQty: number; unitPrice: number }[]
 ): number {
@@ -35,6 +38,7 @@ export const invoiceInputSchema = z
     items: z.array(itemSchema).min(1, 'Minimal 1 barang'),
     status: z.enum(STATUS),
     unpaidAmount: z.number().int().min(0),
+    deliveryStatus: z.enum(DELIVERY_STATUS).default('BELUM_DIKIRIM'),
     imageUrl: z.string().default(''),
     imageHash: z.string().optional(), // SHA-256 of photo bytes; absent for manual entry
   })
@@ -58,6 +62,7 @@ export interface Invoice {
   grandTotal: number;
   status: Status;
   unpaidAmount: number;
+  deliveryStatus: DeliveryStatus;
   imageUrl: string;
   imageHash?: string;
   invoiceCreatedAt: Date;
