@@ -823,7 +823,7 @@ export function InvoiceList() {
           {actionRow && (
             <div
               className="min-h-0 flex-1 overflow-y-auto border-b px-4"
-              style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
             >
               <div className="flex flex-col gap-4 pb-4">
                 <section>
