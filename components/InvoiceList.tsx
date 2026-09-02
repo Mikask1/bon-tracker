@@ -498,7 +498,9 @@ export function InvoiceList() {
                   {j.status === 'scanning'
                     ? 'Foto sedang diproses'
                     : j.status === 'done'
-                      ? j.extracted?.buyer.name || 'Ketuk untuk lengkapi'
+                      ? j.extracted?.buyer.address ||
+                        j.extracted?.buyer.name ||
+                        'Ketuk untuk lengkapi'
                       : 'Ketuk untuk isi manual'}
                 </p>
               </div>
@@ -573,7 +575,9 @@ export function InvoiceList() {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{r.buyer.name || '—'}</p>
+                      <p className="truncate font-medium">
+                        {r.buyer.address || r.buyer.name || '—'}
+                      </p>
                       {summary && (
                         <p className="truncate text-sm text-muted-foreground">
                           {summary}

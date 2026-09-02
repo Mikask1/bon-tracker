@@ -70,7 +70,7 @@ export interface DayGroup {
 // client-side and would otherwise open a stray group above today's.
 export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
   const sorted = [...rows].sort(
-    (a, b) => b.invoiceCreatedAt.getTime() - a.invoiceCreatedAt.getTime()
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
   const groups: DayGroup[] = [];
   const byKey = new Map<string, DayGroup>();
@@ -89,7 +89,7 @@ export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
 }
 
 // One-line summary of what was bought — the recognition cue that replaces the
-// buyer's address and phone in the ledger row.
+// buyer's phone (and, when address is shown, name too) in the ledger row.
 export function itemSummary(items: Item[]): string {
   if (items.length === 0) return '';
   const first = items[0].itemName;
