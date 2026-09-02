@@ -74,9 +74,6 @@ export function InvoiceForm({
     useState<DeliveryStatus>('BELUM_DIKIRIM');
   const [invDate, setInvDate] = useState(''); // yyyy-mm-dd; date printed on the nota
   const [imageUrl, setImageUrl] = useState('');
-  // Nota total to reconcile summed items against (create only). Seeded from the scan,
-  // but editable so a misread total can be corrected. Empty = no check. Never persisted.
-  const [totalStr, setTotalStr] = useState('');
   const [online, setOnline] = useState(true);
   const populatedRef = useRef(false);
 
@@ -100,7 +97,6 @@ export function InvoiceForm({
     setUnpaid('');
     setDeliveryStatus('BELUM_DIKIRIM');
     setImageUrl('');
-    setTotalStr('');
     setInvDate(toYMD(new Date()));
   }
 
@@ -128,7 +124,6 @@ export function InvoiceForm({
       setUnpaid(initial.status === 'BELUM_LUNAS' ? String(initial.unpaidAmount) : '');
       setDeliveryStatus(initial.deliveryStatus);
       setImageUrl(initial.imageUrl);
-      setTotalStr(''); // editing a saved invoice: no reconciliation field
       setInvDate(toYMD(new Date(initial.invoiceCreatedAt)));
       populatedRef.current = true;
       return;
@@ -154,11 +149,6 @@ export function InvoiceForm({
         setStatus(paid ? 'LUNAS' : 'BELUM_LUNAS');
         setUnpaid(paid ? '' : String(computeGrandTotal(e.items)));
         setImageUrl(job.imageUrl);
-        setTotalStr(
-          typeof e.grandTotal === 'number' && e.grandTotal > 0
-            ? String(Math.round(e.grandTotal))
-            : ''
-        );
         setInvDate(
           e.invoiceDate && /^\d{4}-\d{2}-\d{2}$/.test(e.invoiceDate)
             ? e.invoiceDate
@@ -180,24 +170,12 @@ export function InvoiceForm({
   }, [job?.status, uploading]);
 
   const grandTotal = computeGrandTotal(parseRows(rows));
-  // Reconcile summed items against the (editable) nota total. Create only; blank skips.
-  const nTotal = Number(totalStr);
-  const targetTotal =
-    isEdit || totalStr.trim() === '' || Number.isNaN(nTotal) ? null : Math.round(nTotal);
-  const reconciled = targetTotal === null || targetTotal === grandTotal;
-  const totalDiff = targetTotal === null ? 0 : grandTotal - targetTotal;
 
   function setRow(idx: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
 
   function save() {
-    if (!reconciled) {
-      toast.error(
-        `Total item ${formatRupiah(grandTotal)} ≠ total nota ${formatRupiah(targetTotal!)} (selisih ${formatRupiah(Math.abs(totalDiff))}). Perbaiki dulu.`
-      );
-      return;
-    }
     const items = parseRows(rows);
     const unpaidAmount = status === 'BELUM_LUNAS' ? Math.round(Number(unpaid) || 0) : 0;
     const payload = {
@@ -412,34 +390,9 @@ export function InvoiceForm({
                 </Button>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-base font-semibold">
-                  <span>Total</span>
-                  <span>{formatRupiah(grandTotal)}</span>
-                </div>
-                {!isEdit && (
-                  <div className="mt-1 flex flex-col gap-1">
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-muted-foreground">Total di nota</span>
-                      <Input
-                        inputMode="numeric"
-                        placeholder="mis. dari nota"
-                        className="h-8 max-w-40 text-right"
-                        value={totalStr}
-                        onChange={(e) => setTotalStr(e.target.value)}
-                      />
-                    </div>
-                    {targetTotal !== null &&
-                      (reconciled ? (
-                        <p className="text-sm text-green-600">✓ Cocok dengan nota</p>
-                      ) : (
-                        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                          Tidak cocok — selisih {formatRupiah(Math.abs(totalDiff))}. Perbaiki item
-                          atau total nota.
-                        </p>
-                      ))}
-                  </div>
-                )}
+              <div className="flex items-center justify-between text-base font-semibold">
+                <span>Total</span>
+                <span>{formatRupiah(grandTotal)}</span>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -530,8 +483,8 @@ export function InvoiceForm({
             </div>
 
             <div className="sticky bottom-0 border-t bg-background p-4">
-              <Button onClick={save} disabled={!reconciled} className="w-full">
-                {!reconciled ? 'Total belum cocok' : 'Simpan'}
+              <Button onClick={save} className="w-full">
+                Simpan
               </Button>
             </div>
           </>

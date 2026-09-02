@@ -71,8 +71,8 @@ export interface Invoice {
 }
 
 // Extracted shape from the vision model. `grandTotal` is the printed total read off
-// the nota — used ONLY to reconcile against the summed line items at entry time.
-// It is transient (never persisted; not part of invoiceInputSchema / the DB model).
+// the nota, asked of the model only as a self-check on its own line-item extraction.
+// It is transient (never shown or persisted; not part of invoiceInputSchema / the DB model).
 export interface ExtractedInvoice {
   buyer: Buyer;
   items: Item[];

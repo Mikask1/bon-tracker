@@ -42,7 +42,8 @@ const responseSchema = {
         required: ['itemName', 'itemQty', 'unitPrice'],
       },
     },
-    // Printed grand total on the nota — reconciliation only, never persisted.
+    // Printed grand total on the nota — a self-check for the model's own line
+    // items (see PROMPT below); not surfaced or persisted by the app.
     grandTotal: { type: Type.NUMBER },
     // Date printed on the nota, yyyy-mm-dd. Empty string if not present/unreadable.
     invoiceDate: { type: Type.STRING },
