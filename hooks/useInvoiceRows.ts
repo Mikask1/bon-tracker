@@ -89,7 +89,7 @@ export function groupByDay(rows: InvoiceRow[]): DayGroup[] {
 }
 
 // One-line summary of what was bought — the recognition cue that replaces the
-// buyer's address and phone in the ledger row.
+// buyer's phone (and, when address is shown, name too) in the ledger row.
 export function itemSummary(items: Item[]): string {
   if (items.length === 0) return '';
   const first = items[0].itemName;
